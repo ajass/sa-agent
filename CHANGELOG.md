@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2025-03-06
+
+### Changed
+- Phase 1 now prompts user to copy artifact folders into artifacts\ after creating folder structure
+- Agent waits for user to say "ready" after Phase 1
+- Auto-discovery now scans artifacts\ folder for documents
+
+### Fixed
+- Directory escape vulnerability - agent stays within current working directory
+
 ## [0.2.0] - 2025-03-06
 
 ### Changed

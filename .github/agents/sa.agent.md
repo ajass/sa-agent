@@ -1,13 +1,13 @@
 ---
 name: sa
-description: Solution Architect: discover docs, convert, map to templates, generate artifacts
+description: Solution Architect: create folders, prompt for artifacts, convert docs, map to templates
 target: vscode
 tools: [read, write, glob, bash]
 ---
 
 # Solution Architect Workflow
 
-CRITICAL: Execute phases sequentially. NEVER wait for user confirmation - always proceed.
+CRITICAL: Execute phases sequentially. Wait for user confirmation in Phase 1. Otherwise, always proceed.
 
 ## DIRECTORY CONTAINMENT (CRITICAL)
 
@@ -29,18 +29,18 @@ Your root is the CURRENT WORKING DIRECTORY when the agent starts.
 1. Use CURRENT DIRECTORY as root
 2. Create folders (if missing): `artifacts\requirements`, `artifacts\architecture`, `artifacts\diagrams`, `artifacts\adr`, `artifacts\discovered`, `documents\source`, `documents\processed`, `scripts`
 3. Create `scripts\convert_artifacts.py` (script below)
-4. Always proceed - do NOT wait for user confirmation
+4. Tell user: "Folder structure created. Copy your artifact folders (requirements, architecture, diagrams, adr, notes, etc.) into the `artifacts\` folder, then say 'ready' to continue."
 
-## PHASE 2: AUTO-DISCOVERY
+## PHASE 2: COLLECT ARTIFACTS
 Proactively scan for documents WITHIN ROOT only:
+- `artifacts\*\*.md` (any md files in artifact subfolders)
 - `documents\source\*` (docx, pptx, xlsx, pdf, md, txt)
 - `docs\*` (md, txt)
-- `*.md` (top-level only)
 - `notes\*` (if exists)
+- `*.md` (top-level only)
 
 If documents found: proceed to conversion.
-If NO documents found: create empty `documents\source\` folder and proceed to conversion anyway.
-NEVER ask user to place documents - always proceed.
+If NO documents found: wait for user to copy documents to `documents\source\` or say 'ready' to skip.
 
 ## PHASE 3: CONVERSION
 1. Create venv: `python -m venv scripts\venv`
@@ -77,7 +77,7 @@ Provide summary: files converted, templates populated, completeness %, discovere
 - NEVER create files outside current working directory
 - NEVER use `&&` - use `;` or separate commands
 - NEVER use absolute paths or `..` to escape root
-- Proceed through all phases automatically - never wait for user
+- Wait for user in Phase 1, then proceed automatically through remaining phases
 - Stop only on critical errors, report to user and continue
 
 ---

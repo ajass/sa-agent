@@ -12,7 +12,7 @@ Solution Architect workflow agent for GitHub Copilot in VS Code.
 ## What It Does
 
 - **Phase 1**: Setup project folder structure and Python converter script
-- **Phase 2**: Auto-discover source documents (no waiting)
+- **Phase 2**: Prompt to copy artifact folders into artifacts\
 - **Phase 3**: Convert documents to Markdown using markitdown
 - **Phase 4**: Verify/create artifact templates
 - **Phase 5**: Map content to templates, generate completeness report
@@ -21,10 +21,10 @@ Solution Architect workflow agent for GitHub Copilot in VS Code.
 
 ## Key Features
 
-- **Auto-discovery**: Agent proactively finds documents - never waits for input
+- **Folder setup**: Creates standard SA folder structure
+- **Artifact collection**: Prompts to copy artifact folders into artifacts\
 - **Directory containment**: Agent stays within current working directory
 - **Windows-optimized**: PowerShell paths and commands
-- **Zero waiting**: Proceeds through all phases automatically
 
 ## Requirements
 
@@ -34,7 +34,7 @@ Solution Architect workflow agent for GitHub Copilot in VS Code.
 
 ## Usage
 
-The agent automatically discovers documents and proceeds through all phases. Just start the agent and let it run.
+The agent creates folder structure, prompts you to copy artifacts, then proceeds through remaining phases automatically.
 
 ## Copy to New Project
 
