@@ -16,7 +16,7 @@ Execute phases sequentially. Wait for user confirmation before each phase.
 - Always use FULL PATH to venv Python: `scripts\venv\Scripts\python.exe`
 
 ## PHASE 1: SETUP
-Find repo root (look for workflow.md). Create folders: `artifacts/{requirements,architecture,diagrams,adr,discovered}`, `documents/{source,processed}`, `scripts`. Create convert_artifacts.py script below. Confirm completion.
+Use the CURRENT DIRECTORY as the working directory. Create folders: `artifacts/{requirements,architecture,diagrams,adr,discovered}`, `documents/{source,processed}`, `scripts`. Create convert_artifacts.py script below. Confirm completion.
 
 ## PHASE 2: SOURCE COLLECTION
 Tell user: "Place source documents in /documents/source. Say 'ready' when done."
@@ -40,11 +40,10 @@ Update README.md (project purpose, folder structure, setup, usage). Update CHANG
 Summarize: files converted, templates populated, completeness %, discovered content, next steps.
 
 ## GUARDRAILS
-- ALWAYS use full venv path: `scripts\venv\Scripts\python.exe`
+- ALWAYS use current working directory as root
+- NEVER create files outside current working directory
 - NEVER use `&&` - use `;` or separate commands
-- NEVER create files outside repo root
 - Stop on any error, report to user
-- Verify repo root before operations
 
 ---
 
@@ -66,11 +65,7 @@ logger = logging.getLogger(__name__)
 SUPPORTED_EXTENSIONS = {'.docx', '.pptx', '.xlsx', '.pdf', '.md', '.txt', '.png', '.jpg', '.jpeg', '.gif'}
 
 def find_repo_root() -> Path:
-    current = Path.cwd()
-    for parent in [current] + list(current.parents):
-        if (parent / 'WORKFLOW.md').exists():
-            return parent
-    raise RuntimeError("ERROR: workflow.md not found. Run from project root.")
+    return Path.cwd()
 
 def check_markitdown() -> bool:
     try:
