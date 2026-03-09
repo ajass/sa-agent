@@ -90,7 +90,7 @@ Full-lifecycle solution architecture agent. Converts source documents, builds ar
 4. Follow Phase 1 setup, then the agent proceeds through all phases
 
 **Phases:**
-- **Phase 1** — Create folder structure, generate `scripts\convert_artifacts.py`, prompt to copy artifacts
+- **Phase 1** — Create folder structure, prompt to copy artifacts
 - **Phase 2** — Scan and collect source documents from `artifacts\` and `documents\source\`
 - **Phase 3** — Pre-flight checks, venv setup, install dependencies, convert documents to Markdown
 - **Phase 4** — Verify and create artifact templates
@@ -239,7 +239,6 @@ project-root\
 │       ├── SUMMARY.md
 │       ├── tasks\
 │       └── source\
-└── scripts\                     # Shared — Python venv and conversion script
-    ├── venv\
-    └── convert_artifacts.py
+└── scripts\                     # Shared — Python venv
+    └── venv\
 ```

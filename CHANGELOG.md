@@ -9,6 +9,25 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.7.0] - 2026-03-09
+
+### Fixed
+- **VS Code Windows compatibility** — all three agents (`srd`, `sa`, `er`)
+  - Replaced `tools:` frontmatter values with correct VS Code built-in tool names:
+    `readFile`, `createFile`, `editFiles`, `fileSearch`, `listDirectory`, `runInTerminal`, `getTerminalOutput`
+    (previously used generic names `read`, `write`, `glob`, `bash` which are not valid VS Code tool identifiers)
+  - Fixed `DIRECTORY CONTAINMENT` rule: blanket "NEVER use absolute paths" replaced with a qualified rule that permits workspace-rooted absolute paths when required by tooling (resolves VS Code state detection deadlock where `fileSearch`/`listDirectory` require absolute paths)
+  - Fixed `GUARDRAILS` section with the same qualified wording
+
+### Changed
+- **`sa.agent.md`** — removed inline `convert_artifacts.py` Python script (345 lines)
+  - Document conversion now uses `markitdown` CLI directly: `python -m markitdown [input] -o [output]`
+  - Visio `.vsdx` conversion uses a slim inline Python one-liner via terminal instead of the full script
+  - Phase 1 no longer creates `scripts\convert_artifacts.py`
+  - File reduced from 516 lines to 179 lines
+
+---
+
 ## [0.6.0] - 2026-03-09
 
 ### Added
