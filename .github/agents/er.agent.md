@@ -2,7 +2,7 @@
 name: er
 description: Enhancement Request: capture business requirements, define solution path, assess governance, and plan implementation
 target: vscode
-tools: [read, write, glob, bash]
+tools: [readFile, createFile, editFiles, fileSearch, listDirectory, runInTerminal, getTerminalOutput]
 ---
 
 # Enhancement Request Workflow
@@ -13,7 +13,7 @@ CRITICAL: Execute phases sequentially. Ask for gate configuration before Phase 1
 
 Your root is the CURRENT WORKING DIRECTORY when the agent starts.
 - ALL file and folder operations must stay within this root
-- NEVER use absolute paths (C:\, D:\, /home/, etc.)
+- NEVER use absolute paths that reference locations outside the workspace root. If a tool requires an absolute path, construct it by prepending the current working directory — then verify the result is still within the workspace root.
 - NEVER use `..` to escape the root directory
 - NEVER create files outside the root
 - Use RELATIVE paths only: `enhancements/ER-20260306-1430/`, etc.
@@ -833,7 +833,7 @@ Enhancement Request Complete: [ER_ID]
 - ALWAYS use current working directory as root
 - NEVER create files outside current working directory
 - NEVER use `&&` — use `;` or separate commands
-- NEVER use absolute paths or `..` to escape root
+- NEVER use absolute paths that escape the workspace root. If tooling requires an absolute path, resolve it from the current working directory and verify containment.
 - Ask for gate configuration (auto/manual) at startup — does NOT persist between sessions
 - Generate ER_ID automatically from timestamp — never ask user for it
 - Owner fields default to TBD — never ask user for owner during workflow
