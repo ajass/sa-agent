@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Planned
-- `srd.agent.md` — full agent implementation (specification complete, implementation pending)
 - **ER agent — Requirements Discrepancy Report:** Compare enhancement request requirements against SA agent artifacts and templates to identify gaps, conflicts, and misalignments
 
 ---
