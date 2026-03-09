@@ -31,11 +31,13 @@ This is a **multi-session agent**. Each session picks up where the last left off
 - **Phase 4** — Model business processes As-Is and To-Be with Mermaid diagrams + text descriptions, highlight deltas. Auto-chains to Phase 5
 - **Phase 5** — Map requirements to responsible systems/components, define boundaries, generate responsibility matrix. **Session ends** — go ask stakeholders follow-up questions
 
-**Stage B — Technical Handoff (Phase 6):**
-- **Phase 6** — Generate `tech-assessment.md`: Part 1 is a requirements briefing for context; Part 2 is a structured assessment form pre-populated with requirement IDs for the tech team to complete (feasibility table, risk/impact matrix, technical challenges checklist, LOE estimate table, recommended approach, open questions). **Session ends** — hand document to tech team
+**Stage B — Technical Handoff (Phase 6 / 6B):**
+- **Phase 6** — Generate `tech-assessment.md`: Part 1 is a requirements briefing for context; Part 2 is a structured assessment form pre-populated with requirement IDs. At the Stage A→B prompt you choose how to proceed:
+  - `stage-b` — Hand the document to a tech team to complete offline. **Session ends** — invoke again once they're done.
+  - `defer-assessment` — Walk through Part 2 interactively now (section-by-section, in the same session). Use `answer [text]` to provide input for a section, `skip` to defer an individual section, or `defer-all` to defer all remaining sections. The agent proceeds directly to Stage C with whatever was collected — no session break. A **Functional Architect Handoff** to-do list is generated at the end consolidating all open items for the solution architect.
 
 **Stage C — Final Documentation (Phases 7–13):**
-- **Phase 7** — Ingest tech team's completed assessment (from edited markdown file or chat input — agent detects which). **Smart gate:** `continue` or `corrections`
+- **Phase 7** — Ingest tech team's completed assessment (from edited markdown file, chat input, or directly from Phase 6B interactive session — agent detects which). **Smart gate:** `continue` or `corrections`
 - **Phase 8** — Functional solution design incorporating tech team's recommended approach. Auto-chains
 - **Phase 9** — Integrations and data flows with Mermaid sequence diagrams + text descriptions. Auto-chains
 - **Phase 10** — Stakeholder validation package consolidating completeness score, feasibility summary, key decisions, and open items. **Smart gate:** `continue` or `revise`
@@ -67,7 +69,7 @@ This is a **multi-session agent**. Each session picks up where the last left off
 | `final\technical-specifications.md` | C | Tech appendix: feasibility results, risks, architecture changes |
 | `backlog\story-NNN.md` | C | Jira-ready story files with completeness and technical risk flags |
 | `backlog\backlog-summary.md` | C | Story index with dependency map and suggested sprint groupings |
-| `SUMMARY.md` | C | Full session summary across all stages |
+| `SUMMARY.md` | C | Full session summary across all stages; includes `Functional Architect Handoff` to-do list when `defer-assessment` path was used |
 
 **`analysis\README.md`** is created and maintained as a status dashboard across all SRD sessions.
 
@@ -164,8 +166,9 @@ Configuration is per-session and does not persist.
 
 **`srd`** uses a targeted smart gate model — no toggle required:
 - **Smart gates** (always prompt with options): after completeness assessment (Phase 3), after tech feedback ingest (Phase 7), after stakeholder validation (Phase 10)
-- **Stage boundaries** (session ends, new invocation required): end of Stage A (Phase 5), end of Stage B (Phase 6)
-- **Auto-chain** (brief status line only): Phases 4→5, 8→9, 9→10, 11→12, 12→13
+- **Stage boundaries** (session ends, new invocation required): end of Stage A (Phase 5), end of Stage B when using `stage-b` path (Phase 6)
+- **`defer-assessment` path:** No Stage B session break — Phase 6B runs interactively, then the session continues through all of Stage C in one go. Final output includes a `Functional Architect Handoff` section in `SUMMARY.md` with a checklist of all items still requiring business clarification, technical feasibility decisions, or SA attention.
+- **Auto-chain** (brief status line only): Phases 4→5, 6B→7, 8→9, 9→10, 11→12, 12→13
 
 ---
 

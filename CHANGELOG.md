@@ -9,6 +9,21 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.8.0] - 2026-03-09
+
+### Added
+- **`srd.agent.md` — `defer-assessment` path:** New option at the Stage A→B transition prompt that allows the user to walk through the technical assessment interactively and continue all the way to final output in a single session, without waiting for a tech team to complete the form offline
+  - **Phase 6B — Interactive Assessment Loop:** Agent presents each of the 8 Part 2 sections (2.1–2.8) one at a time. User can respond with `answer [text]` to provide input, `skip` to defer an individual section, or `defer-all` to defer all remaining sections and proceed immediately. Answered sections are written to `tech-assessment.md` in real time; deferred sections are annotated `**Status: Deferred**`. Auto-chains to Phase 7 with no session break.
+  - **Deferred section tracking:** Agent maintains a `deferred_sections[]` list and a `session_mode` flag (`defer-assessment`) carried through all subsequent phases
+  - **Phase 7.1 update:** Sections marked `**Status: Deferred**` are treated as intentionally skipped — no `file-ready / chat-input` prompt is triggered for those sections
+  - **Phase 7.2 update:** `technical-feedback-summary.md` includes a **Deferred Assessment Sections** block when any sections were skipped, listing each deferred section and what it captures
+  - **Functional Architect Handoff (Phase 13.1):** `SUMMARY.md` includes a new `## Functional Architect Handoff` section (only on `defer-assessment` path) with four actionable to-do checklists: Business Clarification Required, Technical Feasibility Required, Assessment Sections to Complete, and High-Risk Stories Requiring Attention — framed as a functional architect handing off to a solution architect
+  - **Phase 13.3 update:** Final terminal display appends a `Functional Architect Handoff` status block with counts of open items and a pointer to the handoff to-do list in `SUMMARY.md`
+  - **Status fields:** `SUMMARY.md` status = `Complete - Pending SA Review` and `analysis\README.md` dashboard status = `Pending SA Review` when `defer-assessment` path was used (vs `Complete` on the standard path)
+  - **GUARDRAILS updated:** Two new rules enforce that `defer-assessment` never ends at Stage B and that the Handoff sections are only generated on the `defer-assessment` path
+
+---
+
 ## [0.7.0] - 2026-03-09
 
 ### Fixed

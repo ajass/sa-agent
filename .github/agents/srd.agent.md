@@ -67,8 +67,9 @@ On every invocation, before displaying anything, scan the workspace to determine
 Detected: Stage A complete for [SRD_ID]
 Completeness score: [read from completeness-report.md]
 Options:
-  - stage-b: Proceed to generate technical assessment handoff
-  - add-more: I have additional requirements or stakeholder answers to incorporate
+  - stage-b            : Generate technical assessment for your tech team to complete offline
+  - defer-assessment   : Walk through the technical assessment interactively now and continue to full output
+  - add-more           : I have additional requirements or stakeholder answers to incorporate
 ```
 Wait for user response.
 
@@ -737,7 +738,8 @@ or stakeholder answers before implementation can begin.]
 
 ### 6.3 Stage B Session End
 
-Display:
+**If the user selected `stage-b`:** Display the following and end the session.
+
 ```
 ════════════════════════════════════════════════
 Stage B Complete: [SRD_ID]
@@ -762,6 +764,75 @@ Next steps:
 
 **SESSION ENDS.** Do not proceed further. User must invoke the agent again.
 
+**If the user selected `defer-assessment`:** Display the following and proceed immediately to Phase 6B.
+
+```
+Technical assessment document generated:
+  analysis\[SRD_ID]\tech-assessment.md
+
+Entering interactive assessment mode — you can answer each section now,
+skip individual sections, or defer all remaining sections at any time.
+```
+
+Do NOT end the session. Proceed to Phase 6B.
+
+
+---
+
+## PHASE 6B: INTERACTIVE ASSESSMENT LOOP
+
+Only entered when user selected `defer-assessment`. Do not enter this phase for `stage-b`.
+
+### 6B.1 Initialize Deferred Tracking
+
+Set `deferred_sections = []` — an internal list used to track which Part 2 sections were skipped.
+Set `session_mode = defer-assessment` — carry this flag through all subsequent phases and into Phase 13.
+
+### 6B.2 Section-by-Section Loop
+
+Present each Part 2 section in order (2.1 through 2.8). For each section:
+
+1. Display the section heading, a one-line description of what it covers, and the pre-populated content (table rows, checklist items, or blank template — as generated in Phase 6).
+2. Display the prompt:
+```
+Respond with:
+  answer [your response]  — provide your input for this section
+  skip                    — defer this section and move to the next
+  defer-all               — defer all remaining sections and proceed to Stage C
+```
+3. Wait for user input:
+   - `answer [text]`: Incorporate the user's response into the relevant section of `tech-assessment.md`. Save the file. Move to the next section.
+   - `skip`: Append `**Status: Deferred**` to the section in `tech-assessment.md`. Save the file. Add the section ID (e.g., `2.3`) and name to `deferred_sections[]`. Move to the next section.
+   - `defer-all`: Append `**Status: Deferred**` to this section and all remaining sections in `tech-assessment.md`. Save the file. Add all remaining section IDs to `deferred_sections[]`. Exit the loop immediately.
+
+The 8 sections to loop through, in order:
+
+| Section | Name | Content type |
+|---------|------|-------------|
+| 2.1 | Feasibility Assessment | Pre-populated table (one row per REQ-ID) |
+| 2.2 | Risk and Impact Assessment | Pre-populated risk rows + derived rows |
+| 2.3 | Technical Challenges | Derived checklist items |
+| 2.4 | Dependencies and Prerequisites | Blank table with column headers |
+| 2.5 | Level of Effort Estimate | Blank table with column headers |
+| 2.6 | Recommended Technical Approach | Free-text field |
+| 2.7 | Open Questions for the Business | Blank table with column headers |
+| 2.8 | Additional Notes and Observations | Free-text field |
+
+### 6B.3 Post-Loop Save and Transition
+
+After the loop ends (all sections addressed, or `defer-all` triggered):
+
+1. Save the final `tech-assessment.md` with all answered and deferred sections in place.
+2. Display:
+```
+Assessment complete.
+  Sections answered:  [count]
+  Sections deferred:  [count — list section IDs if > 0, e.g., "2.3, 2.5, 2.6"]
+
+Proceeding to Stage C...
+```
+3. **Auto-chain to Phase 7.** Do NOT end the session.
+
 
 ---
 
@@ -776,17 +847,19 @@ Read `analysis\[SRD_ID]\tech-assessment.md` and check whether Part 2 sections ha
 
 **Detection heuristic:** If the majority of cells in sections 2.1–2.5 are still blank/empty (contain only `|` separators with no content), the form is likely not yet completed.
 
-**If form appears completed:** Parse all sections of Part 2. Extract:
-- Feasibility verdict per requirement (Yes / No / Conditional + notes)
-- Risk ratings and mitigations from section 2.2
-- Technical challenges and complexity from section 2.3
-- Dependencies from section 2.4
-- LOE estimates from section 2.5
-- Recommended approach from section 2.6
-- Tech team's open questions from section 2.7
-- Additional notes from section 2.8
+**Deferred sections (defer-assessment path):** If a section contains `**Status: Deferred**`, it was intentionally skipped during Phase 6B. Treat it as complete for parsing purposes — do not prompt for input on that section. Add the section ID to the running `deferred_sections[]` list. Only parse sections that were actually answered.
 
-**If form appears incomplete:** Ask user:
+**If form appears completed (or all incomplete sections are marked Deferred):** Parse all answered sections of Part 2. Extract:
+- Feasibility verdict per requirement (Yes / No / Conditional + notes) — from section 2.1 if answered
+- Risk ratings and mitigations from section 2.2 — if answered
+- Technical challenges and complexity from section 2.3 — if answered
+- Dependencies from section 2.4 — if answered
+- LOE estimates from section 2.5 — if answered
+- Recommended approach from section 2.6 — if answered
+- Tech team's open questions from section 2.7 — if answered
+- Additional notes from section 2.8 — if answered
+
+**If form appears incomplete (and not on defer-assessment path):** Ask user:
 ```
 The technical assessment form (Part 2) appears to be incomplete or not yet filled in.
 
@@ -807,6 +880,20 @@ Write `analysis\[SRD_ID]\design\technical-feedback-summary.md`:
 **Session:** [SRD_ID]
 **Generated:** [YYYY-MM-DD]
 **Source:** tech-assessment.md (Part 2)
+
+[If session_mode = defer-assessment AND deferred_sections is not empty, include the following block.
+ Otherwise omit it entirely.]
+
+## Deferred Assessment Sections
+
+The following Part 2 sections were not completed during the interactive assessment and will not
+influence downstream design. They should be completed by the solution architect before
+implementation planning begins.
+
+[List each deferred section as:]
+- **[Section ID] — [Section Name]:** [one-line description of what the section captures]
+
+[End of conditional block]
 
 ## Feasibility Summary
 
@@ -1449,7 +1536,7 @@ Write `analysis\[SRD_ID]\SUMMARY.md`:
 # Solution Requirements Design Summary: [SRD_ID]
 
 **Generated:** [YYYY-MM-DD HH:MM]
-**Status:** Complete
+**Status:** [If session_mode = defer-assessment: "Complete - Pending SA Review" | Otherwise: "Complete"]
 
 ---
 
@@ -1463,10 +1550,11 @@ Write `analysis\[SRD_ID]\SUMMARY.md`:
 
 ## Technical Assessment
 
-- **Requirements assessed:** [count]
+- **Requirements assessed:** [count — or "N/A (deferred)" if section 2.1 was deferred]
 - **Feasible:** [count] | **Conditional:** [count] | **Not feasible:** [count]
-- **High risks identified:** [count]
-- **Estimated effort:** [total LOE]
+- **High risks identified:** [count — or "N/A (deferred)" if section 2.2 was deferred]
+- **Estimated effort:** [total LOE — or "Not estimated (deferred)" if section 2.5 was deferred]
+- **Assessment sections deferred:** [count — or omit line if 0]
 
 ## Solution Design
 
@@ -1512,6 +1600,51 @@ Write `analysis\[SRD_ID]\SUMMARY.md`:
 3. Get stakeholder sign-off on validation-package.md
 4. Assign story ownership and import backlog into Jira
 5. Address high-risk stories before sprint planning begins
+
+[If session_mode = defer-assessment: include the following section. Otherwise omit it entirely.]
+
+---
+
+## Functional Architect Handoff
+
+> This session was completed using the `defer-assessment` path. The following items were not
+> resolved during this session and must be addressed by the solution architect before
+> implementation planning begins.
+
+### Business Clarification Required
+
+[For each open or deferred question in clarification-questions.md, output one checkbox item:]
+- [ ] **[Priority]** — [Question text] *(affects: [REQ-IDs])*
+
+[If none: "- No open business clarification questions."]
+
+### Technical Feasibility Required
+
+[If section 2.1 was answered: list each requirement with a Conditional or Not Feasible verdict:]
+- [ ] **[REQ-NNN]** — [Requirement summary]: [condition or reason for infeasibility]
+
+[If section 2.1 was deferred:]
+- [ ] **Feasibility assessment not completed** — All [count] requirements need a Yes / No / Conditional verdict before implementation can begin.
+
+[If all requirements are Feasible and none deferred: "- No feasibility blockers identified."]
+
+### Assessment Sections to Complete
+
+[For each section ID in deferred_sections[], output one checkbox item:]
+- [ ] **[Section ID] — [Section Name]:** [one-line description of what this section captures and why it matters]
+
+[If deferred_sections is empty: omit this sub-section entirely.]
+
+### High-Risk Stories Requiring Attention
+
+[For each story with completeness_risk: high OR technical_risk: high, output one checkbox item:]
+- [ ] **[[SRD_ID]-story-NNN]** — [Story title]
+  - Completeness risk: [high / none] | Technical risk: [high / none]
+  - Linked requirements: [REQ-IDs]
+
+[If none: "- No high-risk stories flagged."]
+
+[End of Functional Architect Handoff section]
 ```
 
 ### 13.2 Update analysis\README.md
@@ -1526,7 +1659,7 @@ If `analysis\README.md` does not exist, create it. If it exists, append a new ro
 
 | ID | Title / Topic | Status | Completeness | Effort Est. | Created |
 |----|---------------|--------|-------------|-------------|---------|
-| [SRD-ID](./SRD-ID/SUMMARY.md) | [derived from requirements] | Complete | [X%] | [LOE] | [date] |
+| [SRD-ID](./SRD-ID/SUMMARY.md) | [derived from requirements] | [If session_mode = defer-assessment: "Pending SA Review" \| Otherwise: "Complete"] | [X%] | [LOE] | [date] |
 
 ## Summary
 
@@ -1552,7 +1685,7 @@ Technical Assessment
   Feasible:               [count]
   Conditional:            [count]
   Not feasible:           [count]
-  Estimated effort:       [total]
+  Estimated effort:       [total — or "Not estimated (deferred)"]
   High risks:             [count]
 
 Backlog
@@ -1574,6 +1707,28 @@ Next Steps
 ════════════════════════════════════════════════
 ```
 
+**If session_mode = defer-assessment**, append the following block immediately after the summary box:
+
+```
+════════════════════════════════════════════════
+Functional Architect Handoff: [SRD_ID]
+Status: Pending SA Review
+════════════════════════════════════════════════
+
+  Open business questions:        [count from clarification-questions.md]
+  Assessment sections deferred:   [count] ([comma-separated section IDs, e.g., "2.3, 2.5, 2.6"])
+  Conditional requirements:       [count]
+  Not-feasible requirements:      [count — or "Unknown (2.1 deferred)"]
+  High-risk stories:              [count]
+
+Handoff to-do list:  analysis\[SRD_ID]\SUMMARY.md
+                     → Section: Functional Architect Handoff
+
+The solution architect should resolve all items in the handoff list before
+implementation planning or sprint estimation begins.
+════════════════════════════════════════════════
+```
+
 **SESSION ENDS.**
 
 ---
@@ -1592,7 +1747,9 @@ Next Steps
 - Phase 2 clarification loop: loop until clean OR user defers. NEVER skip the loop.
 - Clarification questions format: ALWAYS write for stakeholder consumption — self-contained, no assumed context
 - On document conversion errors: continue and log, do NOT stop
-- On tech assessment not filled in: offer file-ready or chat-input — never assume
+- On tech assessment not filled in: offer file-ready or chat-input — never assume (stage-b path only; not applicable on defer-assessment path)
+- defer-assessment path: NEVER end the session at Stage B — always proceed through Phase 6B and continue to Phase 7 and all of Stage C in the same session
+- defer-assessment path: ALWAYS generate the Functional Architect Handoff section in SUMMARY.md and the Handoff Status block in the final display. NEVER generate these on the stage-b path.
 - Stage boundaries: ALWAYS stop and display the stage-end summary. NEVER auto-proceed to the next stage.
 - Smart gates: ALWAYS display the gate prompt and wait for user response (continue / option). NEVER skip.
 - Owner fields: default to TBD — never ask user for owner
