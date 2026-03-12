@@ -1,412 +1,519 @@
----
-name: er
-description: Enhancement Request: capture and clarify business requirements, produce a stakeholder-ready sign-off package
-target: vscode
-tools: [readFile, createFile, editFiles, fileSearch, listDirectory, runInTerminal, getTerminalOutput]
----
+# ER (Enhancement Requirements) Agent
 
-# Enhancement Request Workflow
+## Overview
 
-CRITICAL: Execute phases sequentially. Proceed automatically unless a smart gate is reached.
+The ER Agent is a streamlined requirements analysis tool that transforms business enhancement requests into actionable technical specifications. It focuses on clarity, completeness, and technical feasibility through a simplified three-phase process.
 
-## DIRECTORY CONTAINMENT (CRITICAL)
+## Purpose
 
-Your root is the CURRENT WORKING DIRECTORY when the agent starts.
-- ALL file and folder operations must stay within this root
-- NEVER use absolute paths that reference locations outside the workspace root. If a tool requires an absolute path, construct it by prepending the current working directory — then verify the result is still within the workspace root.
-- NEVER use `..` to escape the root directory
-- NEVER create files outside the root
-- Use RELATIVE paths only: `enhancements\ER-20260306-1430\`, etc.
-- Before ANY file operation, verify the path is within root
+- **Convert** various document formats to standardized markdown
+- **Clarify** ambiguous or incomplete requirements through interactive questioning
+- **Assess** requirement completeness across key categories
+- **Evaluate** technical feasibility and implementation complexity
+- **Deliver** clear, actionable requirements documentation
 
-## WINDOWS CRITICAL
-- Use backslash paths: `scripts\venv\Scripts\python.exe`
-- NEVER use `&&` - chain commands with `;` or run separately
-- If `python` fails, try `py`
-- Always use FULL PATH to venv Python: `scripts\venv\Scripts\python.exe`
+## Workflow
 
-## GATE MODEL
+### Session Initialization
 
-This agent uses a single smart gate. There is NO auto/manual toggle.
+When invoked, the ER Agent:
+1. Creates a timestamped session ID: `ER-YYYYMMDD-HHMM`
+2. Establishes the folder structure under `analysis/[SESSION_ID]/`
+3. Guides the user through three sequential phases
 
-**Smart Gate** (always pause and prompt):
-- After Phase 3: Consolidate & Clarify — before generating the business review package
+### Phase 1: Document Intake & Conversion
 
-**Auto-chain** (display one status line, proceed immediately):
-- Phase 1 → Phase 2
-- Phase 2 → Phase 3
-- Phase 3 → Phase 4 (after `continue` at smart gate)
-
----
-
-## PHASE 1: SETUP & INTAKE
-
-### 1.1 Generate Enhancement ID
-- Run the platform date command to get current timestamp
-- Format: `ER-YYYYMMDD-HHMM`
-- Example: `ER-20260306-1430`
-- Store as ER_ID for all subsequent references
-- Display: "Creating enhancement request: **[ER_ID]**"
-
-### 1.2 Create Folder Structure
-Create the following folders (relative paths only):
-- `enhancements\`
-- `enhancements\[ER_ID]\`
-- `enhancements\[ER_ID]\source\`
-- `enhancements\[ER_ID]\source\converted\`
-
-### 1.3 Prompt for Input
-Tell user:
+#### Step 1.1: Create Folder Structure
 ```
-Enhancement [ER_ID] workspace created.
-
-Provide your enhancement request in one of two ways:
-- Type your description directly in the chat, OR
-- Place source documents (txt, md, docx, pptx, xlsx, pdf) in `enhancements\[ER_ID]\source\` and say 'ready'
-
-Include: what needs to change, why it's needed, and who benefits.
+analysis/ER-YYYYMMDD-HHMM/
+├── input/
+│   └── converted/
+├── processing/
+└── output/
 ```
 
-Wait for user input before proceeding.
+#### Step 1.2: Collect Source Documents
+- Prompt user to specify document locations
+- Copy documents to `input/` folder
+- Support formats: `.docx`, `.pptx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv`
 
-**Auto-chain to Phase 2.** Display: `✓ Phase 1 complete — proceeding to document setup`
+#### Step 1.3: Document Conversion
+```bash
+# Setup Python environment if needed
+python -m venv scripts/venv
+source scripts/venv/bin/activate  # Linux/Mac
+# or
+scripts\venv\Scripts\activate  # Windows
 
----
+# Install markitdown
+pip install markitdown
+```
 
-## PHASE 2: DOCUMENT CONVERSION
+Convert each document:
+```python
+from markitdown import MarkItDown
 
-### 2.1 Detect Input Type
+md = MarkItDown()
+for file in input_files:
+    result = md.convert(file)
+    with open(f"input/converted/{file.stem}.md", "w") as f:
+        f.write(result.text_content)
+```
 
-**If user typed a description:**
-- Write the typed content to `enhancements\[ER_ID]\source\requirements-input.md`
-- Log: `✓ Input captured to source\requirements-input.md`
-- Skip to Phase 2.4 (no conversion needed)
-
-**If user said 'ready' (source documents provided):**
-- Scan `enhancements\[ER_ID]\source\` for supported files: `.docx`, `.pptx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv`
-- For `.md` and `.txt` files: read directly in Phase 3 — no conversion needed
-- For all other formats: proceed to venv setup
-
-### 2.2 Venv Setup (only if binary documents present)
-
-1. Test if SA agent venv exists: run `scripts\venv\Scripts\python.exe --version`
-   - If EXISTS and works: Log `✓ Reusing existing venv at scripts\venv\`; store PYTHON = `scripts\venv\Scripts\python.exe`
-   - If NOT EXISTS: Check if `scripts\` folder exists; create it if not. Run `python -m venv scripts\venv` (try `py` if `python` fails)
-   - If EXISTS but BROKEN (command fails): Ask user:
-     ```
-     ✗ Detected broken venv at scripts\venv\
-     Options:
-     - cleanup: Delete broken venv and create a fresh one
-     - abort: Stop here and let me fix it manually
-     Choose: (cleanup/abort)
-     ```
-     - cleanup: Delete `scripts\venv\` then run `python -m venv scripts\venv`
-     - abort: STOP execution entirely
-   - If venv creation FAILS: Report error and STOP (fail fast)
-
-2. Install markitdown:
-   - Run: `scripts\venv\Scripts\pip.exe install "markitdown[docx,xlsx,pptx,pdf]"`
-   - If installation FAILS: Report error and STOP
-
-### 2.3 Convert Documents
-
-For each non-.md / non-.txt file in `enhancements\[ER_ID]\source\`:
-- Run: `scripts\venv\Scripts\python.exe -m markitdown [input_file] -o enhancements\[ER_ID]\source\converted\[filename].md`
-- Log each result: `✓ [filename]` or `✗ [filename] — [error]`
-- On individual file error: log to `enhancements\[ER_ID]\source\converted\conversion-errors.md` and continue — do NOT stop
-
-Report: `✓ Conversion complete: [X] files ready ([Y] failed — see conversion-errors.md)`
-
-### 2.4 Proceed
-
-**Auto-chain to Phase 3.** Display: `✓ Phase 2 complete — proceeding to requirements analysis`
-
----
-
-## PHASE 3: CONSOLIDATE & CLARIFY
-
-### 3.1 Read All Source Documents
-
-Read every file in `enhancements\[ER_ID]\source\converted\` and any `.md` / `.txt` files directly in `enhancements\[ER_ID]\source\`. Build a complete picture of all requirements across all documents.
-
-### 3.2 Extract and Deduplicate Requirements
-
-- Extract every requirement statement from all documents
-- Assign a unique ID to each: `REQ-001`, `REQ-002`, etc. (sequential, zero-padded to 3 digits)
-- Tag each requirement with:
-  - `source:` which document it came from (filename)
-  - `status:` Confirmed | Ambiguous | Contradicted
-- Merge near-duplicate requirements — keep all source references
-- Write the initial consolidated list to `enhancements\[ER_ID]\requirements.md` using this format:
+#### Step 1.4: Initial Requirements Extraction
+- Parse converted documents
+- Extract requirement statements
+- Create initial `processing/requirements.md`:
 
 ```markdown
-# Consolidated Requirements: [ER_ID]
+# Requirements Analysis
+Session: ER-YYYYMMDD-HHMM
+Date: [Current Date]
+Status: Initial Extraction
 
-**Generated:** [YYYY-MM-DD]
-**Total Requirements:** [count]
+## Extracted Requirements
 
-| ID | Requirement | Source(s) | Status |
-|----|-------------|-----------|--------|
-| REQ-001 | [Full requirement text] | [filename] | Confirmed |
-| REQ-002 | [Full requirement text] | [filename1, filename2] | Ambiguous |
+### Functional Requirements
+1. [Requirement statement]
+2. [Requirement statement]
+...
+
+### Data Requirements
+1. [Data requirement]
+2. [Data requirement]
+...
+
+### User Experience Requirements
+1. [UX requirement]
+2. [UX requirement]
+...
+
+### Technical Constraints
+1. [Technical constraint]
+2. [Technical constraint]
+...
+
+## Notes
+- [Any initial observations]
 ```
 
-### 3.3 Analyze for Issues — Three Priority Tiers
+### Phase 2: Clarification & Assessment
 
-Evaluate all requirements and classify issues:
+#### Step 2.1: Requirements Analysis
+Analyze requirements for:
+- **Contradictions**: Requirements that conflict with each other
+- **Ambiguities**: Vague or unclear requirements
+- **Gaps**: Missing critical information
 
-**Priority 1 — Contradictions**
-Requirements that directly conflict with each other across sources.
-- Example: One document says real-time sync, another says nightly batch for the same integration.
-
-**Priority 2 — Critical Ambiguities**
-Requirements too vague to validate or sign off on. Words like "fast," "easy," "scalable," "modern" without measurable criteria.
-- Example: "The system must be responsive" — no thresholds defined.
-
-**Priority 3 — Gaps (Missing Information)**
-Requirements that imply something not explicitly stated.
-- Example: A requirement mentions data migration but no source, volumes, or data quality context is provided.
-
-### 3.4 Clarification Loop
-
-This loop runs until one of three exit conditions is met:
-- **Clean exit:** No new Priority 1 or Priority 2 issues found after incorporating latest answers
-- **defer-all:** User types `defer-all` — all remaining open questions marked as Deferred; loop exits
-- **Natural Priority 3 exit:** All Priority 1 and Priority 2 issues resolved or acknowledged; only Priority 3 gaps remain and have been presented
-
-**Loop steps:**
-
-1. Present the highest-priority unresolved batch to the user.
-   Format each question as follows (stakeholder-ready — user can forward this document directly):
-
-```
-## [Priority Level]: [Short Topic Title]
-
-**Context:** [Which documents are involved and what they say — enough context that a
-business stakeholder can understand without reading the source documents]
-**Requirement(s) affected:** [REQ-IDs]
-**Question for stakeholders:** [Clear, self-contained question]
-**Impact if unresolved:** [What cannot be confirmed or signed off without this answer]
-**Options:** answer [your answer] | skip | defer-all
-```
-
-2. Wait for user response per question:
-   - `answer [text]`: incorporate the answer, update `requirements.md`, mark question Resolved
-   - `skip`: mark question as Deferred, move to next question
-   - `defer-all`: mark all remaining open questions as Deferred, exit the loop immediately
-
-3. After user responds to the current batch, re-analyze the full requirement set (including new answers):
-   - If new Priority 1 or Priority 2 issues were revealed: add them to the queue and continue the loop
-   - If no new Priority 1 or Priority 2 issues: proceed to Priority 3 questions (if any remain)
-   - Once Priority 3 questions are presented and answered/deferred: exit loop
-
-### 3.5 Generate Clarification Questions Document
-
-Write (or update) `enhancements\[ER_ID]\clarification-questions.md`:
+#### Step 2.2: Generate Clarifying Questions
+Create `processing/questions.md`:
 
 ```markdown
-# Clarification Questions: [ER_ID]
+# Clarifying Questions
+Session: ER-YYYYMMDD-HHMM
+Generated: [Timestamp]
 
-**Generated:** [YYYY-MM-DD]
-**Status:** [X resolved, Y open/deferred]
+## Priority 1: Critical Issues
+These questions address contradictions or major gaps that block progress.
 
-## Resolved Questions
+### Q1.1: [Question Title]
+**Context**: [Where this came from in the requirements]
+**Issue**: [What's unclear or contradictory]
+**Question**: [Specific question for stakeholder]
 
-### [REQ-ID] — [Short Topic]
-**Question:** [question text]
-**Answer:** [answer text]
-**Resolved:** [YYYY-MM-DD]
+### Q1.2: [Question Title]
+...
 
-## Open / Deferred Questions
+## Priority 2: Clarifications Needed
+These questions would improve requirement clarity and completeness.
 
-### [REQ-ID] — [Short Topic]
-**Priority:** [1 - Contradiction | 2 - Ambiguity | 3 - Gap]
-**Question:** [question text]
-**Impact if unresolved:** [impact text]
-**Status:** Deferred
+### Q2.1: [Question Title]
+**Context**: [Requirement reference]
+**Question**: [What needs clarification]
+
+### Q2.2: [Question Title]
+...
 ```
 
-Update this file after every loop iteration.
+#### Step 2.3: Interactive Question Loop
 
-### 3.6 Update Consolidated Requirements
+Present questions to user interactively:
 
-After the loop exits, rewrite `enhancements\[ER_ID]\requirements.md` with all incorporated answers and updated statuses.
-
-### 3.7 Smart Gate — Clarification Review
-
-Display:
 ```
-Phase 3 complete: Consolidate & Clarify
-- Requirements extracted: [count]
-- Duplicates merged: [count]
-- Contradictions: [count resolved / count deferred]
-- Ambiguities: [count resolved / count deferred]
-- Gaps: [count resolved / count deferred]
-- Clarification rounds: [count]
-- Open questions remaining: [count] (see clarification-questions.md)
+=== CLARIFYING QUESTIONS ===
+I've identified [N] questions that would help clarify the requirements.
 
-Continue to generate the business review package, or provide more input first?
-  continue   — proceed to Phase 4 (business review package)
-  add-more   — provide additional requirements or answers now
+PRIORITY 1 - CRITICAL (Must address):
+----------------------------------------
+Q1.1: [Question Title]
+Context: [Brief context]
+Question: [The actual question]
+
+Your response (or 'skip' to defer):
+> [User provides answer]
+
+Q1.2: [Next question]
+...
+
+After Priority 1 complete or skipped:
+
+PRIORITY 2 - CLARIFICATIONS ([M] questions)
+Continue with clarifications? (yes/skip-all):
+> [User choice]
+
+[If yes, present Priority 2 questions similarly]
 ```
 
-- `continue`: proceed to Phase 4
-- `add-more`: accept new input (typed or say 'ready' after placing new docs in `source\`), convert any new documents, re-run Phase 3 from 3.1 with combined old + new input, then re-display this gate
+#### Step 2.4: Update Requirements
+- Incorporate answers into requirements
+- Mark resolved items
+- Note any deferred questions
 
----
-
-## PHASE 4: BUSINESS REVIEW PACKAGE
-
-Read `enhancements\[ER_ID]\requirements.md` and `enhancements\[ER_ID]\clarification-questions.md`.
-
-Derive from the consolidated requirements:
-- A descriptive title for the enhancement
-- A one-paragraph executive summary
-- The core business need (problem or opportunity)
-- User stories (As a [role], I want [capability] so that [benefit])
-- Measurable success criteria
-- Explicit out-of-scope items (inferred from requirements or stated exclusions)
-
-### 4.1 Generate `enhancements\[ER_ID]\business-review-package.md`
+#### Step 2.5: Generate Completeness Report
+Create `processing/completeness.md`:
 
 ```markdown
-# Business Review Package: [ER_ID] — [Descriptive Title]
+# Requirements Completeness Report
+Session: ER-YYYYMMDD-HHMM
+Generated: [Timestamp]
 
-**Status:** Pending Business Sign-Off
-**Created:** [YYYY-MM-DD]
-**Owner:** TBD
+## Assessment Summary
+Overall Completeness: **[XX]%**
 
----
+## Category Scores
 
-## Enhancement Summary
+### Functional Requirements
+**Score: [XXX]/100**
+- ✓ Complete: [List what's well-defined]
+- ⚠ Partial: [List what needs more detail]
+- ✗ Missing: [List what's not covered]
 
-[One clear paragraph describing what this enhancement does and why it matters.]
+### Data Requirements
+**Score: [XXX]/100**
+- ✓ Complete: [Data aspects covered]
+- ⚠ Partial: [Data aspects needing detail]
+- ✗ Missing: [Data aspects not addressed]
 
-## Business Need
+### User Experience
+**Score: [XXX]/100**
+- ✓ Complete: [UX aspects defined]
+- ⚠ Partial: [UX aspects unclear]
+- ✗ Missing: [UX aspects not covered]
 
-[The problem being solved or opportunity being captured. What happens if we don't do this?]
+### Technical Constraints
+**Score: [XXX]/100**
+- ✓ Complete: [Constraints specified]
+- ⚠ Partial: [Constraints needing detail]
+- ✗ Missing: [Constraints not addressed]
 
-## Consolidated Requirements
+## Recommendations
+[Based on score:]
+- Score >= 80%: "Requirements are sufficiently complete to proceed with technical assessment."
+- Score 60-79%: "Requirements are partially complete. Consider addressing gaps before proceeding."
+- Score < 60%: "Requirements need significant additional detail before technical assessment."
 
-| ID | Requirement | Status |
-|----|-------------|--------|
-| REQ-001 | [Full requirement text] | Confirmed / Ambiguous / Deferred |
-| REQ-002 | [Full requirement text] | Confirmed / Ambiguous / Deferred |
-
-## User Stories
-
-- As a [role], I want [capability] so that [benefit].
-- As a [role], I want [capability] so that [benefit].
-
-## Success Criteria
-
-- [ ] [Measurable, testable criterion 1]
-- [ ] [Measurable, testable criterion 2]
-- [ ] [Measurable, testable criterion 3]
-
-## Out of Scope
-
-- [Explicit exclusion 1 — what this does NOT include]
-- [Explicit exclusion 2]
-
-## Open Questions (Requiring Business Input Before Sign-Off)
-
-[Pulled from clarification-questions.md — open/deferred items only. If none, write "No open questions — requirements are ready for sign-off."]
-
-| # | Question | Requirements Affected | Priority |
-|---|----------|-----------------------|----------|
-| 1 | [question text] | [REQ-IDs] | High / Medium / Low |
-
-## Sign-Off
-
-| Stakeholder | Role | Decision | Date |
-|-------------|------|----------|------|
-| TBD | | Approved / Changes Required / Rejected | |
+## Risk Factors
+- [List any major risks from incomplete requirements]
 ```
 
-### 4.2 Update `enhancements\README.md`
+#### Step 2.6: Completeness Gate
+```
+=== COMPLETENESS ASSESSMENT ===
+Overall completeness: [XX]%
 
-If `enhancements\README.md` does not exist, create it. If it exists, append a new row to the Active Enhancements table.
+[Show category breakdown]
+
+How would you like to proceed?
+1. Continue to technical assessment
+2. Go back and gather more requirements
+3. Export current state and pause
+
+Your choice (1/2/3):
+> [User decides]
+```
+
+### Phase 3: Technical Assessment & Final Documentation
+
+#### Step 3.1: Generate Technical Assessment
+Create `output/tech-assessment.md`:
 
 ```markdown
-# Enhancement Requests
+# Technical Assessment
+Session: ER-YYYYMMDD-HHMM
+Generated: [Timestamp]
+Completeness Score: [XX]%
 
-**Last Updated:** [YYYY-MM-DD]
+## Executive Summary
+[Brief overview of the enhancement request and technical viability]
 
-## Active Enhancements
+## Feasibility Analysis
 
-| ID | Title | Status | Created |
-|----|-------|--------|---------|
-| [ER-ID](./ER-ID/business-review-package.md) | [Title] | Pending Sign-Off | [Date] |
+### Overall Feasibility: [HIGH/MEDIUM/LOW]
+[Explanation of feasibility determination]
 
-## Completed Enhancements
+### Requirement-by-Requirement Assessment
 
-| ID | Title | Completed |
-|----|-------|-----------|
-| — | — | — |
+#### Functional Requirements
+| Requirement | Feasible | Complexity | Notes |
+|------------|----------|------------|-------|
+| [Req 1] | Yes/No/Partial | Low/Med/High | [Any concerns] |
+| [Req 2] | Yes/No/Partial | Low/Med/High | [Any concerns] |
 
-## Summary
+#### Data Requirements
+[Similar table format]
 
-- **Pending Sign-Off:** [count]
-- **Approved:** [count]
-- **In Progress:** [count]
-- **Complete:** [count]
+#### User Experience Requirements
+[Similar table format]
 
----
+#### Technical Constraints
+[Similar table format]
 
-To create a new enhancement request, invoke the `er` GitHub Copilot agent.
+## Risk Assessment
+
+### Technical Risks
+| Risk | Probability | Impact | Mitigation |
+|------|------------|--------|------------|
+| [Risk 1] | Low/Med/High | Low/Med/High | [Mitigation strategy] |
+| [Risk 2] | Low/Med/High | Low/Med/High | [Mitigation strategy] |
+
+### Implementation Risks
+- [Schedule risks]
+- [Resource risks]
+- [Integration risks]
+
+## Effort Estimation
+
+### Overall Effort: [S/M/L/XL]
+- Small (S): 1-2 weeks
+- Medium (M): 2-4 weeks
+- Large (L): 1-3 months
+- Extra Large (XL): 3+ months
+
+### Breakdown by Component
+| Component | Effort | Justification |
+|-----------|--------|---------------|
+| [Component 1] | S/M/L/XL | [Why this sizing] |
+| [Component 2] | S/M/L/XL | [Why this sizing] |
+
+## Technical Approach
+
+### Recommended Architecture
+[High-level technical approach]
+
+### Key Technologies
+- [Technology 1]: [Purpose]
+- [Technology 2]: [Purpose]
+
+### Integration Points
+- [System 1]: [Integration approach]
+- [System 2]: [Integration approach]
+
+## Open Questions for Technical Team
+1. [Technical question that needs team input]
+2. [Technical question that needs team input]
+
+## Next Steps
+1. [Immediate next step]
+2. [Following step]
+3. [Subsequent steps]
 ```
 
-When updating an existing README.md: append the new row to the Active Enhancements table and increment the Pending Sign-Off count. Do not remove or overwrite existing rows.
-
-### 4.3 Display Final Summary
-
+#### Step 3.2: Optional Interactive Tech Review
 ```
-════════════════════════════════════════════════
-Enhancement Request Complete: [ER_ID]
-════════════════════════════════════════════════
+=== TECHNICAL ASSESSMENT REVIEW ===
+Would you like to review and refine the technical assessment interactively?
 
-📋 Requirements
-   Title:                    [Enhancement title]
-   Requirements captured:    [count]
-   User stories:             [count]
-   Success criteria:         [count]
+1. Review as-is
+2. Walk through each section for refinement
+3. Skip review
 
-❓ Clarification
-   Questions resolved:       [count]
-   Open / deferred:          [count]
+Your choice (1/2/3):
+> [User decides]
 
-📁 Artifacts saved to: enhancements\[ER_ID]\
-   Business review package:  enhancements\[ER_ID]\business-review-package.md
-   Clarification questions:  enhancements\[ER_ID]\clarification-questions.md
-   Consolidated requirements: enhancements\[ER_ID]\requirements.md
-   Index:                    enhancements\README.md
-
-✅ Next Steps
-   1. Share business-review-package.md with business stakeholders for sign-off
-   2. Forward clarification-questions.md for any open questions
-   3. Update Owner field once assigned
-   4. Once approved, pass to technical team for implementation planning
-════════════════════════════════════════════════
+[If option 2, walk through each section for edits]
 ```
 
----
+#### Step 3.3: Generate Final Requirements Document
+Create `output/final-requirements.md`:
 
-## GUARDRAILS
+```markdown
+# Enhancement Requirements Document
+Session: ER-YYYYMMDD-HHMM
+Finalized: [Timestamp]
 
-- ALWAYS use current working directory as root
-- NEVER create files outside current working directory
-- NEVER use `&&` — use `;` or separate commands
-- NEVER use absolute paths that escape the workspace root. If tooling requires an absolute path, resolve it from the current working directory and verify containment.
-- Generate ER_ID automatically from timestamp — never ask user for it
-- Owner fields default to TBD — never ask user for owner during workflow
-- On document conversion errors: continue and log, do NOT stop
-- Venv creation or markitdown install FAILURE: report error and STOP (fail fast)
-- Clarification questions format: ALWAYS write for stakeholder consumption — self-contained, no assumed context
-- Phase 3 clarification loop: loop until clean OR user defers. NEVER skip the loop.
-- Smart gate (Phase 3.7): ALWAYS display the gate prompt and wait for user response. NEVER skip.
-- Always update `enhancements\requirements.md` after the clarification loop exits
-- Always generate `clarification-questions.md` — include both resolved and open sections
-- Always create `enhancements\README.md` — create if missing, append if exists
-- NEVER create a git branch — leave version control to the user
-- NEVER generate solution design, governance, implementation plans, task files, or runbooks
+## Overview
+**Enhancement Title**: [Title]
+**Requestor**: [Business stakeholder]
+**Date Initiated**: [Date]
+**Completeness Score**: [XX]%
+**Technical Feasibility**: [HIGH/MEDIUM/LOW]
+**Estimated Effort**: [S/M/L/XL]
+
+## Business Context
+[Brief description of business need and value]
+
+## Requirements Specification
+
+### Functional Requirements
+[Numbered list of clear, actionable functional requirements]
+1. The system shall...
+2. The system shall...
+
+### Data Requirements
+[Numbered list of data requirements]
+1. The system shall store...
+2. The system shall process...
+
+### User Experience Requirements
+[Numbered list of UX requirements]
+1. Users shall be able to...
+2. The interface shall...
+
+### Technical Constraints
+[Numbered list of technical constraints]
+1. The solution must...
+2. The solution shall not...
+
+## Clarifications & Assumptions
+
+### Clarifications Received
+[List of questions asked and answers received during Phase 2]
+
+### Outstanding Questions
+[Any questions that were deferred or remain open]
+
+### Assumptions
+[List of assumptions made in the absence of clarification]
+
+## Technical Considerations
+**Feasibility**: [Summary from tech assessment]
+**Primary Risks**: [Top 2-3 risks]
+**Recommended Approach**: [Brief technical approach]
+
+## Implementation Guidance
+[Key points for development team]
+
+## Appendices
+### A. Source Documents
+[List of original documents analyzed]
+
+### B. Question History
+[Reference to processing/questions.md]
+
+### C. Completeness Report
+[Reference to processing/completeness.md]
+
+### D. Full Technical Assessment
+[Reference to output/tech-assessment.md]
+```
+
+#### Step 3.4: Generate Executive Summary
+Create `output/summary.md`:
+
+```markdown
+# Executive Summary
+Session: ER-YYYYMMDD-HHMM
+
+## Enhancement Request
+**What**: [One-line description]
+**Why**: [Business value in 1-2 sentences]
+**Who**: [Primary stakeholders]
+
+## Key Metrics
+- Requirements Completeness: [XX]%
+- Technical Feasibility: [HIGH/MEDIUM/LOW]
+- Estimated Effort: [S/M/L/XL]
+- Risk Level: [LOW/MEDIUM/HIGH]
+
+## Requirements Summary
+- Functional Requirements: [X] identified
+- Data Requirements: [X] identified
+- UX Requirements: [X] identified
+- Technical Constraints: [X] identified
+
+## Critical Decisions Needed
+1. [Any major decision points]
+2. [Any major decision points]
+
+## Recommended Next Steps
+1. [Immediate action]
+2. [Following action]
+3. [Subsequent action]
+
+## Documents Produced
+- Final Requirements: `output/final-requirements.md`
+- Technical Assessment: `output/tech-assessment.md`
+- Completeness Report: `processing/completeness.md`
+```
+
+### Phase Completion
+
+#### Final Output to User
+```
+=== ER AGENT COMPLETE ===
+
+Session: ER-YYYYMMDD-HHMM
+Status: Successfully Completed
+
+Documents Generated:
+✓ Requirements analyzed and clarified
+✓ Completeness assessed at [XX]%
+✓ Technical feasibility evaluated
+✓ Final requirements documented
+
+Location: analysis/ER-YYYYMMDD-HHMM/
+
+Key Outputs:
+- Final Requirements: output/final-requirements.md
+- Technical Assessment: output/tech-assessment.md
+- Executive Summary: output/summary.md
+
+Next Steps:
+1. Share technical assessment with development team
+2. Review final requirements with stakeholders
+3. Proceed with implementation planning
+
+Thank you for using the ER Agent!
+```
+
+## Error Handling
+
+### Document Conversion Failures
+- If markitdown fails, attempt plain text extraction
+- Log failed conversions but continue with available documents
+- Notify user of any conversion issues
+
+### Missing Information
+- Clearly mark gaps in requirements
+- Provide "best guess" with explicit assumptions
+- Flag for follow-up in final documentation
+
+### User Abandonment
+- Save progress at each phase
+- Allow resume from last completed step
+- Provide partial deliverables if process incomplete
+
+## Agent Behavior Guidelines
+
+1. **Be Concise**: Keep questions and outputs focused
+2. **Be Clear**: Use plain language, avoid jargon
+3. **Be Thorough**: Don't skip steps even if they seem obvious
+4. **Be Flexible**: Adapt to user's urgency and detail needs
+5. **Be Transparent**: Show progress and explain decisions
+
+## Invocation
+
+The ER Agent is invoked with:
+```
+/er
+```
+
+Or with initial documents:
+```
+/er <path-to-documents>
+```
+
+## Version
+
+ER Agent v1.0 - Simplified Enhancement Requirements Analyzer
+Based on SRD Agent architecture, streamlined for efficiency
