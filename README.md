@@ -110,37 +110,28 @@ Full-lifecycle solution architecture agent. Converts source documents, builds ar
 
 ### `er` — Enhancement Request
 
-Streamlined workflow for a specific, well-defined enhancement request. Captures business requirements, defines a solution path, assesses governance, and produces an actionable implementation plan with task files.
+Captures and clarifies business requirements for a specific enhancement, then produces a stakeholder-ready sign-off package. Focused on getting requirements confirmed by the business before any implementation work begins.
 
 **Quick Start:**
 1. Copy `.github\agents\er.agent.md` to your project's `.github\agents\` folder
 2. Open VS Code → Copilot Chat → select `er` from the agent dropdown
-3. Answer the gate configuration prompt (`auto` or `manual`)
-4. Provide your enhancement description or place source documents in the generated folder
+3. Provide your enhancement description or place source documents in the generated folder
 
 **Phases:**
 - **Phase 1** — Auto-generate Enhancement ID (`ER-YYYYMMDD-HHMM`), create folder structure, prompt for input
-- **Phase 2** — Collect and structure business requirements, cross-reference SA artifacts if present
-- **Phase 3** — Define high-level solution, assess complexity, create ADR if needed
-- **Phase 4** — Intelligent governance assessment (risk, impact, security, privacy, regulatory, accessibility)
-- **Phase 5** — Generate implementation plan, task files with hour estimates, runbook, update index
-- **Phase 6** — Final summary
+- **Phase 2** — Convert source documents (docx, pptx, xlsx, pdf, txt, md) to Markdown via markitdown; reuses SA agent venv if present
+- **Phase 3** — Extract and deduplicate requirements (tagged `REQ-NNN`), run prioritized clarification loop: contradictions → ambiguities → gaps. Generates `clarification-questions.md` — a stakeholder-ready document the user can forward directly. Loop exits when clean or user types `skip` (individual) or `defer-all` (exit loop). **Smart gate:** `continue` or `add-more`
+- **Phase 4** — Generate `business-review-package.md`: consolidated requirements, user stories, success criteria, out-of-scope items, open questions, and a sign-off block. Update `enhancements\README.md`
 
 **Outputs per enhancement (`enhancements\ER-YYYYMMDD-HHMM\`):**
 
 | File | Description |
 |------|-------------|
-| `requirements.md` | Business need, user stories, success criteria |
-| `solution.md` | High-level approach, decisions, dependencies |
-| `governance.md` | Risk, impact, and compliance assessment |
-| `implementation-plan.md` | Phases, effort estimates, timeline |
-| `runbook.md` | Higher-level implementation guidance |
-| `tasks\task-NNN.md` | Individual task files with hour estimates |
-| `SUMMARY.md` | Auto-generated summary of all artifacts |
+| `business-review-package.md` | Primary output — requirements, user stories, success criteria, open questions, sign-off block |
+| `clarification-questions.md` | Stakeholder-ready Q&A document (resolved + open/deferred questions) |
+| `requirements.md` | Consolidated, deduplicated requirements table (REQ-NNN tagged) |
 
 **`enhancements\README.md`** is created and maintained as a status dashboard across all enhancement requests.
-
-**SA Agent Integration:** If `artifacts\` is present from an SA agent run, the ER agent will automatically cross-reference architecture docs, requirements, and ADRs. It never modifies SA agent files — read-only.
 
 ---
 
@@ -150,7 +141,7 @@ Streamlined workflow for a specific, well-defined enhancement request. Captures 
 |-----------|-----|
 | You have raw docs and need structured project scaffolding + architecture templates | `sa` |
 | You have scattered BRDs and meeting notes, need to validate requirements, get a tech feasibility assessment, and produce a full enhancement package with backlog | `srd` |
-| You have a specific, well-defined enhancement and need to capture it quickly with governance, tasks, and a runbook | `er` |
+| You have a specific, well-defined enhancement and need requirements confirmed by the business before handing off to the technical team | `er` |
 
 The `srd` agent is fully self-contained — it handles its own document conversion and does not require `sa` or `er` to have been run first.
 
@@ -158,11 +149,15 @@ The `srd` agent is fully self-contained — it handles its own document conversi
 
 ## Decision Gates
 
-**`sa` and `er`** share the same gate system. At startup you are asked once:
+**`sa`** uses an auto/manual toggle. At startup you are asked once:
 - **auto** — only pause in Phase 1, proceed automatically through remaining phases
 - **manual** — pause after each phase with `yes / no / skip-gates` options
 
 Configuration is per-session and does not persist.
+
+**`er`** uses a single smart gate model — no toggle required:
+- **Smart gate** (always prompts): after Phase 3 clarification loop — `continue` to generate the business review package, or `add-more` to provide additional input and re-run the loop
+- **Auto-chain** (brief status line only): Phases 1→2, 2→3, then 3→4 after `continue`
 
 **`srd`** uses a targeted smart gate model — no toggle required:
 - **Smart gates** (always prompt with options): after completeness assessment (Phase 3), after tech feedback ingest (Phase 7), after stakeholder validation (Phase 10)
@@ -234,14 +229,11 @@ project-root\
 ├── enhancements\                # ER agent — enhancement requests
 │   ├── README.md                # Status dashboard
 │   └── ER-YYYYMMDD-HHMM\
-│       ├── requirements.md
-│       ├── solution.md
-│       ├── governance.md
-│       ├── implementation-plan.md
-│       ├── runbook.md
-│       ├── SUMMARY.md
-│       ├── tasks\
-│       └── source\
+│       ├── business-review-package.md   # Primary output — stakeholder sign-off document
+│       ├── clarification-questions.md   # Stakeholder-ready Q&A (resolved + open)
+│       ├── requirements.md              # Consolidated requirements (REQ-NNN tagged)
+│       └── source\                      # Raw input documents
+│           └── converted\              # Markitdown-converted markdown
 └── scripts\                     # Shared — Python venv
     └── venv\
 ```
