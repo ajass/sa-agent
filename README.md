@@ -110,30 +110,32 @@ Full-lifecycle solution architecture agent. Converts source documents, builds ar
 
 ### `er` — Enhancement Request
 
-Streamlined requirements analysis tool that transforms business enhancement requests into actionable technical specifications. Focuses on clarity, completeness, and technical feasibility through a three-phase process.
+Streamlined requirements analysis tool that transforms business enhancement requests into actionable technical specifications. Focuses on clarity, completeness, and technical feasibility through a three-phase process. Supports resume — re-invoke the agent and it detects where the last session left off.
 
 **Quick Start:**
 1. Copy `.github\agents\er.agent.md` to your project's `.github\agents\` folder
 2. Open VS Code → Copilot Chat → select `er` from the agent dropdown
-3. The agent creates the session folder and prompts you to place source documents in `source\` or type requirements directly
+3. The agent runs state detection, creates the session folder (or resumes an existing one), and prompts you to place source documents in `source\` or type requirements directly
 
 **Phases:**
-- **Phase 1 — Document Intake & Conversion** — Auto-generate session ID (`ER-YYYYMMDD-HHMM`), create folder structure under `analysis\ER-YYYYMMDD-HHMM\` with `source\` folder, prompt user to place documents or type requirements. Scan file extensions, install only the markitdown extras needed (reuses SA agent venv if present; skips venv entirely if only text files). Convert documents to Markdown, extract initial requirements into `processing\requirements.md`
-- **Phase 2 — Clarification & Assessment** — Analyze requirements for contradictions, ambiguities, and gaps. Generate prioritized clarifying questions (`processing\questions.md`), walk user through interactive Q&A loop (Priority 1 critical issues first, then Priority 2 clarifications). Update requirements with answers, generate completeness report (`processing\completeness.md`) scored across four categories (Functional, Data, UX, Technical Constraints). **Completeness gate:** continue to technical assessment, go back and gather more requirements, or export current state and pause
-- **Phase 3 — Technical Assessment & Final Documentation** — Generate technical assessment with feasibility analysis, risk assessment, effort estimation (S/M/L/XL), and recommended architecture. Optional interactive tech review. Produce final requirements document and executive summary
+- **Phase 1 — Document Intake & Conversion** — Auto-generate session ID (`ER-YYYYMMDD-HHMM`), create folder structure under `analysis\ER-YYYYMMDD-HHMM\` with `source\` folder, prompt user to place documents or type requirements. Scan file extensions, install only the markitdown extras needed (reuses SA agent venv if present; skips venv entirely if only text files). Convert documents to Markdown, extract and tag requirements as `REQ-NNN` into `processing\requirements.md`
+- **Phase 2 — Clarification & Assessment** — Analyze requirements by `REQ-NNN` for contradictions, ambiguities, and gaps. Generate prioritized clarifying questions referencing `REQ-NNN` (`processing\questions.md`), walk user through interactive Q&A loop (Priority 1 critical issues first, then Priority 2 clarifications). Update requirement status by `REQ-NNN`, generate completeness report (`processing\completeness.md`) scored across four categories (Functional, Data, UX, Technical Constraints) with `REQ-NNN` traceability. **Completeness gate:** continue to technical assessment, go back and gather more requirements, or export current state and pause
+- **Phase 3 — Technical Assessment & Final Documentation** — Generate technical assessment with feasibility by `REQ-NNN`, risk assessment, effort estimation (S/M/L/XL), and recommended architecture. Optional interactive tech review. Produce final requirements document (with `REQ-NNN` traceability) and executive summary
 
 **Supported file types:** `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`, `.html`, `.htm`, `.csv`, `.json`, `.xml`, `.txt`, `.md` — markitdown extras are installed dynamically based on which file types are present in `source\`
+
+**Resume support:** File-based state detection runs on every invocation. The agent scans for existing `ER-*` session folders and checks which output files exist to determine where to resume. No user coordination required.
 
 **Outputs per session (`analysis\ER-YYYYMMDD-HHMM\`):**
 
 | File | Phase | Description |
 |------|-------|-------------|
 | `source\converted\` | 1 | Markitdown-converted markdown files |
-| `processing\requirements.md` | 1 | Initial extracted requirements (Functional, Data, UX, Technical Constraints) |
-| `processing\questions.md` | 2 | Prioritized clarifying questions with context |
-| `processing\completeness.md` | 2 | Completeness scoring per category with recommendations |
-| `output\tech-assessment.md` | 3 | Feasibility, risk, effort estimation, recommended architecture |
-| `output\final-requirements.md` | 3 | Complete requirements specification with clarifications and assumptions |
+| `processing\requirements.md` | 1 | Tagged requirements table (`REQ-NNN`) with source and status |
+| `processing\questions.md` | 2 | Prioritized clarifying questions referencing `REQ-NNN` |
+| `processing\completeness.md` | 2 | Completeness scoring per category with `REQ-NNN` traceability |
+| `output\tech-assessment.md` | 3 | Feasibility by `REQ-NNN`, risk, effort estimation, recommended architecture |
+| `output\final-requirements.md` | 3 | Complete requirements specification with `REQ-NNN` traceability |
 | `output\summary.md` | 3 | Executive summary with key metrics and recommended next steps |
 
 ---
@@ -158,7 +160,8 @@ The `srd` agent is fully self-contained — it handles its own document conversi
 
 Configuration is per-session and does not persist.
 
-**`er`** uses a single completeness gate — no toggle required:
+**`er`** uses a single completeness gate + file-based state detection — no toggle required:
+- **State detection** (runs first on every invocation): scans for existing `ER-*` session folders and checks output files to determine where to resume. Auto-picks the most recent session.
 - **Completeness gate** (always prompts): after Phase 2 completeness assessment — three options: `1` continue to technical assessment, `2` go back and gather more requirements, `3` export current state and pause
 - **Optional review gate**: Phase 3 offers an interactive tech review walkthrough (review as-is, walk through each section, or skip)
 - **Auto-chain** (brief status line only): Phase 1 steps chain automatically; Phase 3 steps chain automatically after the completeness gate

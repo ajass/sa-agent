@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (`er.agent.md`)
+- **YAML frontmatter** — added `name: er`, `target: vscode`, `tools:` declaration to match `sa` and `srd` agents
+- **DIRECTORY CONTAINMENT section** — all file operations must stay within the current working directory; no absolute paths that escape workspace root; no `..` escapes; verify path before every file operation (adapted from SRD agent)
+- **STATE DETECTION section** — file-based resume support that runs before any other action on every invocation. Scans for existing `ER-*` session folders and checks which output files exist to determine where to resume. Auto-picks the most recent session by lexicographic sort. Detection tree:
+  - No `ER-*` folder → fresh start (Phase 1)
+  - `ER-*` exists but no `processing\requirements.md` → Phase 1 incomplete (resume at 1.3 or 1.4 depending on source folder contents)
+  - `processing\requirements.md` exists but no `processing\completeness.md` → resume Phase 2
+  - `processing\completeness.md` exists but no `output\tech-assessment.md` → re-present completeness gate
+  - `output\tech-assessment.md` exists but no `output\summary.md` → resume Phase 3 at Step 3.3
+  - `output\summary.md` exists → session complete, offer `new`
+- **GUARDRAILS section** — 16 guardrail rules covering path safety, state detection ordering, completeness gate behavior, clarification loop, REQ-NNN enforcement, conversion error handling, base-package fallback, owner fields, git branch prohibition, and Windows path enforcement
+- **REQ-NNN requirement tagging** — all requirements are assigned sequential IDs (`REQ-001`, `REQ-002`, etc.) with `source:` and `status:` metadata. Requirements table format replaces numbered lists in `processing\requirements.md`. REQ-IDs are referenced throughout Phase 2 (clarifying questions, completeness report) and Phase 3 (tech assessment feasibility tables, risk tables, effort breakdown, final requirements document)
+- **Base-package conversion fallback** — if markitdown fails on a text-readable format (csv, json, xml, html), copy the original file to `source\converted\` as-is and log the error (these formats are already readable as text)
+
 ### Changed (`er.agent.md`)
 - **Phase 1 rewrite** — replaced "prompt user to specify document locations" with SRD-style intake: agent creates `source\` folder upfront, tells user to place documents there and say "ready" (or type requirements directly in chat), then waits for input
 - **Dynamic dependency detection** — scans `source\` for file extensions after user says "ready", builds `pip install` command with only the markitdown extras actually needed (e.g. `markitdown[docx,pdf]` if only `.docx` and `.pdf` files are present)
@@ -13,12 +27,19 @@ All notable changes to this project will be documented in this file.
 - **Unsupported format handling** — images (`.png`, `.jpg`, `.jpeg`, `.gif`), audio (`.mp3`, `.wav`), archives (`.zip`), and `.epub` are skipped with a warning (images require OCR plugin + external API key; audio requires speech recognition)
 - **Venv handling** — added broken-venv detection with cleanup/abort prompt, fail-fast on venv creation or markitdown install failure (adapted from SRD agent)
 - **Conversion approach** — replaced inline Python `MarkItDown` class usage with CLI `python -m markitdown` one-file-at-a-time conversion; per-file errors logged to `source\converted\conversion-errors.md` without stopping
+- **Windows path normalization** — all file paths converted to Windows backslash format; Linux/Mac commands removed entirely
+- **Session Initialization** — updated to reference state detection as first step
 - **Removed** `/er <path-to-documents>` invocation — source folder is now created by the agent; no external path needed
-- Version bumped to v1.1
+- Version bumped to v1.2
 
 ### Changed (`README.md`)
+- Updated ER agent description to mention resume support and REQ-NNN tagging
+- Updated Quick Start to reference state detection
+- Updated Phase descriptions with REQ-NNN traceability
+- Added "Resume support" line describing file-based state detection
+- Updated outputs table with REQ-NNN descriptions
+- Updated Decision Gates section to mention state detection
 - Updated ER agent Quick Start to describe new source-folder workflow
-- Updated Phase 1 description: source folder prompt, dynamic dependency detection, conditional venv
 - Added "Supported file types" line listing all accepted formats
 - Added `source\converted\` to outputs table
 - Updated folder structure diagram: `input\` → `source\`
