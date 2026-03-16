@@ -10,8 +10,6 @@ The ER (Enhancement Requirements) Agent is a streamlined tool for transforming b
 # Invoke the ER Agent
 /er
 
-# Or with initial documents
-/er path/to/requirements/folder
 ```
 
 ## Key Features
@@ -117,28 +115,6 @@ The agent assesses requirements across four essential dimensions:
 | **M (Medium)** | 2-4 weeks | Moderate complexity, some integration |
 | **L (Large)** | 1-3 months | Complex features, significant changes |
 | **XL (Extra Large)** | 3+ months | Major initiatives, architectural changes |
-
-## Example Usage
-
-### Basic Enhancement Request
-```bash
-/er
-
-# Agent prompts for documents
-> Please specify document locations: ./requirements/feature-request.docx
-
-# Agent converts and analyzes
-# Presents clarifying questions
-# Generates assessments and final docs
-```
-
-### Batch Document Processing
-```bash
-/er ./requirements/
-
-# Processes all documents in folder
-# Consolidates into single requirement set
-```
 
 ## Best Practices
 
