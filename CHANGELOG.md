@@ -9,30 +9,14 @@ All notable changes to this project will be documented in this file.
 ## [0.9.0] - 2026-03-12
 
 ### Changed (`er.agent.md`)
-- Rebuilt the ER agent from the ground up — shifted focus from implementation-ready output to **business sign-off ready** output
-- Replaced the 6-phase workflow (requirements → solution → governance → implementation → tasks → summary) with a streamlined **4-phase workflow**: Setup → Document Conversion → Consolidate & Clarify → Business Review Package
-
-### Added (`er.agent.md`)
-- **Phase 3 — Prioritized Clarification Loop** (adapted from `srd` Phase 2): extracts and deduplicates requirements tagged `REQ-NNN`, then runs a prioritized loop — contradictions first, then critical ambiguities, then gaps. Each question is formatted for direct stakeholder forwarding (self-contained context, no assumed knowledge). User responds with `answer [text]`, `skip`, or `defer-all`
-- **`clarification-questions.md`** output: stakeholder-ready Q&A document with resolved and open/deferred sections, updated after every loop iteration
-- **`business-review-package.md`** output: single consolidated sign-off document containing the enhancement summary, business need, full requirements table, user stories, success criteria, out-of-scope items, open questions table, and a sign-off block for stakeholder approval
-- **Single smart gate** after Phase 3: `continue` (generate package) or `add-more` (provide additional input and re-run loop)
-- Document conversion pipeline carried over from prior `er` agent: reuses SA agent venv if present, creates one if not; converts `.docx`, `.pptx`, `.xlsx`, `.pdf` via markitdown; per-file error logging; fail-fast on venv/install failure
-
-### Removed (`er.agent.md`)
-- Phase 3 — Solution Definition (`solution.md`, ADR creation, complexity assessment)
-- Phase 4 — Governance (`governance.md`, risk/impact/security/privacy/regulatory/accessibility checklists)
-- Phase 5 — Implementation Planning (`implementation-plan.md`, task files with hour estimates, `runbook.md`)
-- `SUMMARY.md` per enhancement
-- `auto / manual` gate configuration prompt
-- SA agent artifact cross-referencing (`artifacts\` folder scan)
-- `tasks\` subfolder
+- Reverted planned 4-phase business-sign-off rebuild — retained the original **3-phase workflow**: Document Intake & Conversion → Clarification & Assessment → Technical Assessment & Final Documentation
+- ER agent remains focused on requirements analysis and technical feasibility rather than business sign-off
 
 ### Changed (`README.md`)
-- Updated `er` agent section to document new 4-phase workflow and new output files
-- Updated "When to Use Which Agent" table description for `er`
-- Updated Decision Gates section: `er` now described as single smart gate (no toggle); `sa` retains auto/manual toggle
-- Updated Folder Structure diagram to reflect new `er` output files
+- Updated `er` agent section to accurately document the 3-phase workflow and actual output files
+- Updated "When to Use Which Agent" table description for `er` to reflect technical feasibility focus
+- Updated Decision Gates section: `er` uses a completeness gate after Phase 2 (3 options) and optional tech review in Phase 3
+- Updated Folder Structure diagram: merged ER sessions into `analysis\` tree alongside SRD sessions
 
 ---
 

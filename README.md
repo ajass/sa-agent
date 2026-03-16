@@ -110,7 +110,7 @@ Full-lifecycle solution architecture agent. Converts source documents, builds ar
 
 ### `er` — Enhancement Request
 
-Captures and clarifies business requirements for a specific enhancement, then produces a stakeholder-ready sign-off package. Focused on getting requirements confirmed by the business before any implementation work begins.
+Streamlined requirements analysis tool that transforms business enhancement requests into actionable technical specifications. Focuses on clarity, completeness, and technical feasibility through a three-phase process.
 
 **Quick Start:**
 1. Copy `.github\agents\er.agent.md` to your project's `.github\agents\` folder
@@ -118,20 +118,20 @@ Captures and clarifies business requirements for a specific enhancement, then pr
 3. Provide your enhancement description or place source documents in the generated folder
 
 **Phases:**
-- **Phase 1** — Auto-generate Enhancement ID (`ER-YYYYMMDD-HHMM`), create folder structure, prompt for input
-- **Phase 2** — Convert source documents (docx, pptx, xlsx, pdf, txt, md) to Markdown via markitdown; reuses SA agent venv if present
-- **Phase 3** — Extract and deduplicate requirements (tagged `REQ-NNN`), run prioritized clarification loop: contradictions → ambiguities → gaps. Generates `clarification-questions.md` — a stakeholder-ready document the user can forward directly. Loop exits when clean or user types `skip` (individual) or `defer-all` (exit loop). **Smart gate:** `continue` or `add-more`
-- **Phase 4** — Generate `business-review-package.md`: consolidated requirements, user stories, success criteria, out-of-scope items, open questions, and a sign-off block. Update `enhancements\README.md`
+- **Phase 1 — Document Intake & Conversion** — Auto-generate session ID (`ER-YYYYMMDD-HHMM`), create folder structure under `analysis\ER-YYYYMMDD-HHMM\`, collect source documents, convert to Markdown via markitdown (reuses SA agent venv if present), extract initial requirements into `processing\requirements.md`
+- **Phase 2 — Clarification & Assessment** — Analyze requirements for contradictions, ambiguities, and gaps. Generate prioritized clarifying questions (`processing\questions.md`), walk user through interactive Q&A loop (Priority 1 critical issues first, then Priority 2 clarifications). Update requirements with answers, generate completeness report (`processing\completeness.md`) scored across four categories (Functional, Data, UX, Technical Constraints). **Completeness gate:** continue to technical assessment, go back and gather more requirements, or export current state and pause
+- **Phase 3 — Technical Assessment & Final Documentation** — Generate technical assessment with feasibility analysis, risk assessment, effort estimation (S/M/L/XL), and recommended architecture. Optional interactive tech review. Produce final requirements document and executive summary
 
-**Outputs per enhancement (`enhancements\ER-YYYYMMDD-HHMM\`):**
+**Outputs per session (`analysis\ER-YYYYMMDD-HHMM\`):**
 
-| File | Description |
-|------|-------------|
-| `business-review-package.md` | Primary output — requirements, user stories, success criteria, open questions, sign-off block |
-| `clarification-questions.md` | Stakeholder-ready Q&A document (resolved + open/deferred questions) |
-| `requirements.md` | Consolidated, deduplicated requirements table (REQ-NNN tagged) |
-
-**`enhancements\README.md`** is created and maintained as a status dashboard across all enhancement requests.
+| File | Phase | Description |
+|------|-------|-------------|
+| `processing\requirements.md` | 1 | Initial extracted requirements (Functional, Data, UX, Technical Constraints) |
+| `processing\questions.md` | 2 | Prioritized clarifying questions with context |
+| `processing\completeness.md` | 2 | Completeness scoring per category with recommendations |
+| `output\tech-assessment.md` | 3 | Feasibility, risk, effort estimation, recommended architecture |
+| `output\final-requirements.md` | 3 | Complete requirements specification with clarifications and assumptions |
+| `output\summary.md` | 3 | Executive summary with key metrics and recommended next steps |
 
 ---
 
@@ -141,7 +141,7 @@ Captures and clarifies business requirements for a specific enhancement, then pr
 |-----------|-----|
 | You have raw docs and need structured project scaffolding + architecture templates | `sa` |
 | You have scattered BRDs and meeting notes, need to validate requirements, get a tech feasibility assessment, and produce a full enhancement package with backlog | `srd` |
-| You have a specific, well-defined enhancement and need requirements confirmed by the business before handing off to the technical team | `er` |
+| You have a specific enhancement request and need to clarify requirements, assess completeness, and evaluate technical feasibility | `er` |
 
 The `srd` agent is fully self-contained — it handles its own document conversion and does not require `sa` or `er` to have been run first.
 
@@ -155,9 +155,10 @@ The `srd` agent is fully self-contained — it handles its own document conversi
 
 Configuration is per-session and does not persist.
 
-**`er`** uses a single smart gate model — no toggle required:
-- **Smart gate** (always prompts): after Phase 3 clarification loop — `continue` to generate the business review package, or `add-more` to provide additional input and re-run the loop
-- **Auto-chain** (brief status line only): Phases 1→2, 2→3, then 3→4 after `continue`
+**`er`** uses a single completeness gate — no toggle required:
+- **Completeness gate** (always prompts): after Phase 2 completeness assessment — three options: `1` continue to technical assessment, `2` go back and gather more requirements, `3` export current state and pause
+- **Optional review gate**: Phase 3 offers an interactive tech review walkthrough (review as-is, walk through each section, or skip)
+- **Auto-chain** (brief status line only): Phase 1 steps chain automatically; Phase 3 steps chain automatically after the completeness gate
 
 **`srd`** uses a targeted smart gate model — no toggle required:
 - **Smart gates** (always prompt with options): after completeness assessment (Phase 3), after tech feedback ingest (Phase 7), after stakeholder validation (Phase 10)
@@ -204,19 +205,30 @@ project-root\
 │       ├── srd.agent.md         # Solution Requirements Designer agent
 │       ├── sa.agent.md          # Solution Architect agent
 │       └── er.agent.md          # Enhancement Request agent
-├── analysis\                    # SRD agent — requirements analysis sessions
-│   ├── README.md                # Status dashboard
-│   └── SRD-YYYYMMDD-HHMM\
-│       ├── source\              # Raw input documents
+├── analysis\                    # SRD and ER agents — analysis sessions
+│   ├── README.md                # Status dashboard (SRD)
+│   ├── SRD-YYYYMMDD-HHMM\
+│   │   ├── source\              # Raw input documents
+│   │   │   └── converted\       # Markitdown-converted markdown
+│   │   ├── requirements\        # Consolidated, categorized, completeness report, clarification questions
+│   │   ├── processes\           # As-Is / To-Be process models
+│   │   ├── design\              # System responsibilities, functional design, integrations, tech feedback
+│   │   ├── tech-assessment.md   # Technical team handoff document
+│   │   ├── validation-package.md
+│   │   ├── final\               # Final enhancement document set
+│   │   ├── backlog\             # Jira-ready story files
+│   │   └── SUMMARY.md
+│   └── ER-YYYYMMDD-HHMM\
+│       ├── input\               # Source documents
 │       │   └── converted\       # Markitdown-converted markdown
-│       ├── requirements\        # Consolidated, categorized, completeness report, clarification questions
-│       ├── processes\           # As-Is / To-Be process models
-│       ├── design\              # System responsibilities, functional design, integrations, tech feedback
-│       ├── tech-assessment.md   # Technical team handoff document
-│       ├── validation-package.md
-│       ├── final\               # Final enhancement document set
-│       ├── backlog\             # Jira-ready story files
-│       └── SUMMARY.md
+│       ├── processing\          # Working documents
+│       │   ├── requirements.md  # Extracted requirements
+│       │   ├── questions.md     # Prioritized clarifying questions
+│       │   └── completeness.md  # Completeness scoring report
+│       └── output\              # Final deliverables
+│           ├── tech-assessment.md       # Feasibility, risk, effort, architecture
+│           ├── final-requirements.md    # Complete requirements specification
+│           └── summary.md               # Executive summary
 ├── artifacts\                   # SA agent — strategic architecture artifacts
 │   ├── requirements\
 │   ├── architecture\
@@ -226,14 +238,6 @@ project-root\
 ├── documents\                   # SA agent — source and converted documents
 │   ├── source\
 │   └── processed\
-├── enhancements\                # ER agent — enhancement requests
-│   ├── README.md                # Status dashboard
-│   └── ER-YYYYMMDD-HHMM\
-│       ├── business-review-package.md   # Primary output — stakeholder sign-off document
-│       ├── clarification-questions.md   # Stakeholder-ready Q&A (resolved + open)
-│       ├── requirements.md              # Consolidated requirements (REQ-NNN tagged)
-│       └── source\                      # Raw input documents
-│           └── converted\              # Markitdown-converted markdown
 └── scripts\                     # Shared — Python venv
     └── venv\
 ```
