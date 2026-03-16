@@ -21,9 +21,10 @@ All requirements are tagged with unique IDs (`REQ-001`, `REQ-002`, etc.) for ful
 
 ### Document Conversion
 - Automatically converts multiple document formats to markdown via markitdown
-- Supported formats: `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`, `.html`, `.htm`, `.csv`, `.json`, `.xml`, `.txt`, `.md`
+- Supported formats: `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`, `.html`, `.htm`, `.csv`, `.json`, `.xml`, `.eml`, `.txt`, `.md`
 - Dynamic dependency detection — only installs the markitdown extras needed for your actual files
-- Skips venv entirely if only text files are present
+- `.eml` files converted via Python stdlib `email` module (no pip install needed — extracts subject, from, to, date, body)
+- Skips venv entirely if only text files (`.md`, `.txt`) are present
 - Base-package conversion fallback — if markitdown fails on csv/json/xml/html, copies the original file as-is (already text-readable)
 
 ### Interactive Clarification
@@ -148,6 +149,7 @@ Multiple `ER-*` sessions: the agent auto-picks the most recent by lexicographic 
 | PDF | `.pdf` | `pdf` | Installed only if .pdf files present |
 | HTML | `.html`, `.htm` | none (base) | Base markitdown handles these |
 | Data | `.csv`, `.json`, `.xml` | none (base) | On conversion failure, copied as-is |
+| Email | `.eml` | none (stdlib) | Python `email` module — extracts headers + body; needs venv but no pip install |
 | Text | `.txt`, `.md` | none | Copied to `converted\` as-is; no venv needed |
 | Unsupported | `.png`, `.jpg`, `.gif`, `.mp3`, `.wav`, `.zip`, `.epub` | n/a | Skipped with warning |
 

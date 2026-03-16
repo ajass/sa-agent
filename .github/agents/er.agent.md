@@ -92,7 +92,7 @@ The ER Agent is a streamlined requirements analysis tool that transforms busines
   - 1.1 Generate Session ID (`ER-YYYYMMDD-HHMM`)
   - 1.2 Create Folder Structure (`source\`, `source\converted\`, `processing\`, `output\`)
   - 1.3 Prompt for Source Documents — place files in `source\` or type requirements directly; agent waits for input
-  - 1.4 Detect Dependencies & Setup Venv — scan file extensions, install only the markitdown extras needed (skip venv entirely for text-only files)
+  - 1.4 Detect Dependencies & Setup Venv — scan file extensions, install only the markitdown extras needed (skip venv entirely for text-only files; `.eml` uses Python stdlib only)
   - 1.5 Convert Source Documents — one file at a time; errors logged, never stop; base-package failures copied as-is
   - 1.6 Initial Requirements Extraction — parse converted docs, tag as `REQ-NNN`, create `processing\requirements.md`
 - **Phase 2: Clarification & Assessment**
@@ -142,7 +142,7 @@ Tell user:
 Session [ER_ID] workspace is ready.
 
 Provide your enhancement details in one of two ways:
-- Place source documents (docx, pptx, xlsx, pdf, html, csv, json, xml, txt, md)
+- Place source documents (docx, pptx, xlsx, pdf, html, csv, json, xml, eml, txt, md)
   in: analysis\[ER_ID]\source\
   Then say 'ready' to continue.
 - OR type your requirements directly in the chat now.
@@ -157,12 +157,14 @@ Wait for user input before proceeding.
 | Group | Extensions | Conversion |
 |-------|-----------|------------|
 | Text-native (no conversion needed) | `.md`, `.txt` | Copy to `source\converted\` as-is |
+| Stdlib conversion (no pip install needed) | `.eml` | Convert via Python `email` module (stdlib) — extract headers + body to markdown |
 | Base markitdown (no extras needed) | `.html`, `.htm`, `.csv`, `.json`, `.xml` | Convert via `markitdown` base package |
 | Extras required | `.docx` → `docx`, `.xlsx`/`.xls` → `xlsx`, `.pptx` → `pptx`, `.pdf` → `pdf` | Convert via `markitdown` with detected extras |
 | Unsupported (skip with warning) | `.png`, `.jpg`, `.jpeg`, `.gif`, `.mp3`, `.wav`, `.zip`, `.epub`, and any other extension | Log warning: `⚠ Skipped [filename] — unsupported format` |
 
 3. Decision tree:
    - **Only text-native files** (`.md`, `.txt`) or user typed requirements → skip venv entirely, log `✓ No binary documents — skipping markitdown setup`
+   - **Only text-native + stdlib files** (`.md`, `.txt`, `.eml`) → create venv (Python needed for `.eml` parsing) but do NOT install markitdown
    - **Base-only formats** (html, csv, json, xml) but no extras-requiring formats → `scripts\venv\Scripts\pip.exe install markitdown`
    - **Extras-requiring formats present** → build extras list dynamically from detected extensions, e.g. `scripts\venv\Scripts\pip.exe install "markitdown[docx,pdf]"`
 
@@ -185,6 +187,37 @@ Wait for user input before proceeding.
 
 #### Step 1.5: Convert Source Documents
 - `.md` and `.txt` files: copy to `source\converted\` as-is (or read directly in Phase 2)
+- `.eml` files: convert via Python stdlib `email` module — run the following script for each `.eml` file:
+  ```python
+  import email
+  from email import policy
+  from pathlib import Path
+
+  eml_path = Path("[input_file]")
+  with open(eml_path, "rb") as f:
+      msg = email.message_from_binary_file(f, policy=policy.default)
+
+  md_lines = []
+  md_lines.append(f"# {msg['subject'] or '(no subject)'}")
+  md_lines.append("")
+  md_lines.append(f"**From:** {msg['from']}")
+  md_lines.append(f"**To:** {msg['to']}")
+  if msg['cc']:
+      md_lines.append(f"**CC:** {msg['cc']}")
+  md_lines.append(f"**Date:** {msg['date']}")
+  md_lines.append("")
+  md_lines.append("---")
+  md_lines.append("")
+
+  body = msg.get_body(preferencelist=("plain", "html"))
+  if body:
+      content = body.get_content()
+      md_lines.append(content)
+
+  output_path = Path("analysis\\[ER_ID]\\source\\converted") / f"{eml_path.stem}.md"
+  output_path.write_text("\n".join(md_lines), encoding="utf-8")
+  ```
+  - On conversion failure: log to `conversion-errors.md` and continue
 - `.csv`, `.json`, `.xml`, `.html`, `.htm`: convert via markitdown base package
   - On conversion failure: copy the original file to `source\converted\` as-is (these formats are already text-readable) and log the error
 - `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`: convert via markitdown with installed extras
