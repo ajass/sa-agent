@@ -225,16 +225,22 @@ project-root\
 │   │   ├── backlog\             # Jira-ready story files
 │   │   └── SUMMARY.md
 │   └── ER-YYYYMMDD-HHMM\
-│       ├── source\              # Source documents
-│       │   └── converted\       # Markitdown-converted markdown
-│       ├── processing\          # Working documents
-│       │   ├── requirements.md  # Extracted requirements
-│       │   ├── questions.md     # Prioritized clarifying questions
-│       │   └── completeness.md  # Completeness scoring report
-│       └── output\              # Final deliverables
-│           ├── tech-assessment.md       # Feasibility, risk, effort, architecture
-│           ├── final-requirements.md    # Complete requirements specification
-│           └── summary.md               # Executive summary
+│       │
+│       │   ── Phase 1: Document Intake & Conversion ──
+│       ├── source\                      # User places documents here (Step 1.3)
+│       │   └── converted\               # Markitdown output (Step 1.5)
+│       │
+│       │   ── Phase 2: Clarification & Assessment ──
+│       ├── processing\
+│       │   ├── requirements.md          # Tagged requirements REQ-NNN (Step 1.6, updated in 2.4)
+│       │   ├── questions.md             # Prioritized clarifying questions (Step 2.2)
+│       │   └── completeness.md          # Completeness scoring report (Step 2.5)
+│       │
+│       │   ── Phase 3: Technical Assessment & Final Documentation ──
+│       └── output\
+│           ├── tech-assessment.md       # Feasibility, risk, effort (Step 3.1)
+│           ├── final-requirements.md    # Final requirements with REQ-NNN (Step 3.3)
+│           └── summary.md              # Executive summary (Step 3.4)
 ├── artifacts\                   # SA agent — strategic architecture artifacts
 │   ├── requirements\
 │   ├── architecture\
