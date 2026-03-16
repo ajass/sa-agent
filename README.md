@@ -115,17 +115,20 @@ Streamlined requirements analysis tool that transforms business enhancement requ
 **Quick Start:**
 1. Copy `.github\agents\er.agent.md` to your project's `.github\agents\` folder
 2. Open VS Code → Copilot Chat → select `er` from the agent dropdown
-3. Provide your enhancement description or place source documents in the generated folder
+3. The agent creates the session folder and prompts you to place source documents in `source\` or type requirements directly
 
 **Phases:**
-- **Phase 1 — Document Intake & Conversion** — Auto-generate session ID (`ER-YYYYMMDD-HHMM`), create folder structure under `analysis\ER-YYYYMMDD-HHMM\`, collect source documents, convert to Markdown via markitdown (reuses SA agent venv if present), extract initial requirements into `processing\requirements.md`
+- **Phase 1 — Document Intake & Conversion** — Auto-generate session ID (`ER-YYYYMMDD-HHMM`), create folder structure under `analysis\ER-YYYYMMDD-HHMM\` with `source\` folder, prompt user to place documents or type requirements. Scan file extensions, install only the markitdown extras needed (reuses SA agent venv if present; skips venv entirely if only text files). Convert documents to Markdown, extract initial requirements into `processing\requirements.md`
 - **Phase 2 — Clarification & Assessment** — Analyze requirements for contradictions, ambiguities, and gaps. Generate prioritized clarifying questions (`processing\questions.md`), walk user through interactive Q&A loop (Priority 1 critical issues first, then Priority 2 clarifications). Update requirements with answers, generate completeness report (`processing\completeness.md`) scored across four categories (Functional, Data, UX, Technical Constraints). **Completeness gate:** continue to technical assessment, go back and gather more requirements, or export current state and pause
 - **Phase 3 — Technical Assessment & Final Documentation** — Generate technical assessment with feasibility analysis, risk assessment, effort estimation (S/M/L/XL), and recommended architecture. Optional interactive tech review. Produce final requirements document and executive summary
+
+**Supported file types:** `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`, `.html`, `.htm`, `.csv`, `.json`, `.xml`, `.txt`, `.md` — markitdown extras are installed dynamically based on which file types are present in `source\`
 
 **Outputs per session (`analysis\ER-YYYYMMDD-HHMM\`):**
 
 | File | Phase | Description |
 |------|-------|-------------|
+| `source\converted\` | 1 | Markitdown-converted markdown files |
 | `processing\requirements.md` | 1 | Initial extracted requirements (Functional, Data, UX, Technical Constraints) |
 | `processing\questions.md` | 2 | Prioritized clarifying questions with context |
 | `processing\completeness.md` | 2 | Completeness scoring per category with recommendations |
@@ -219,7 +222,7 @@ project-root\
 │   │   ├── backlog\             # Jira-ready story files
 │   │   └── SUMMARY.md
 │   └── ER-YYYYMMDD-HHMM\
-│       ├── input\               # Source documents
+│       ├── source\              # Source documents
 │       │   └── converted\       # Markitdown-converted markdown
 │       ├── processing\          # Working documents
 │       │   ├── requirements.md  # Extracted requirements

@@ -18,50 +18,92 @@ The ER Agent is a streamlined requirements analysis tool that transforms busines
 
 When invoked, the ER Agent:
 1. Creates a timestamped session ID: `ER-YYYYMMDD-HHMM`
-2. Establishes the folder structure under `analysis/[SESSION_ID]/`
-3. Guides the user through three sequential phases
+2. Establishes the folder structure under `analysis/[ER_ID]/`
+3. Prompts the user to provide source documents or type requirements directly
+4. Guides the user through three sequential phases
 
 ### Phase 1: Document Intake & Conversion
 
-#### Step 1.1: Create Folder Structure
+#### Step 1.1: Generate Session ID
+- Run the platform date command to get current timestamp
+- Format: `ER-YYYYMMDD-HHMM`
+- Example: `ER-20260315-0930`
+- Store as ER_ID for all subsequent references
+- Display: "Starting session: **[ER_ID]**"
+
+#### Step 1.2: Create Folder Structure
+Create the following folders (relative paths only, if they do not already exist):
 ```
-analysis/ER-YYYYMMDD-HHMM/
-├── input/
+analysis/[ER_ID]/
+├── source/
 │   └── converted/
 ├── processing/
 └── output/
 ```
 
-#### Step 1.2: Collect Source Documents
-- Prompt user to specify document locations
-- Copy documents to `input/` folder
-- Support formats: `.docx`, `.pptx`, `.xlsx`, `.pdf`, `.txt`, `.md`, `.csv`
-
-#### Step 1.3: Document Conversion
-```bash
-# Setup Python environment if needed
-python -m venv scripts/venv
-source scripts/venv/bin/activate  # Linux/Mac
-# or
-scripts\venv\Scripts\activate  # Windows
-
-# Install markitdown
-pip install markitdown
+#### Step 1.3: Prompt for Source Documents
+Tell user:
 ```
+Session [ER_ID] workspace is ready.
 
-Convert each document:
-```python
-from markitdown import MarkItDown
-
-md = MarkItDown()
-for file in input_files:
-    result = md.convert(file)
-    with open(f"input/converted/{file.stem}.md", "w") as f:
-        f.write(result.text_content)
+Provide your enhancement details in one of two ways:
+- Place source documents (docx, pptx, xlsx, pdf, html, csv, json, xml, txt, md)
+  in: analysis/[ER_ID]/source/
+  Then say 'ready' to continue.
+- OR type your requirements directly in the chat now.
 ```
+Wait for user input before proceeding.
 
-#### Step 1.4: Initial Requirements Extraction
-- Parse converted documents
+#### Step 1.4: Detect Dependencies & Setup Venv
+
+1. Scan `analysis/[ER_ID]/source/` for file extensions
+2. Classify files into three groups:
+
+| Group | Extensions | Conversion |
+|-------|-----------|------------|
+| Text-native (no conversion needed) | `.md`, `.txt` | Copy to `source/converted/` as-is |
+| Base markitdown (no extras needed) | `.html`, `.htm`, `.csv`, `.json`, `.xml` | Convert via `markitdown` base package |
+| Extras required | `.docx` → `docx`, `.xlsx`/`.xls` → `xlsx`, `.pptx` → `pptx`, `.pdf` → `pdf` | Convert via `markitdown` with detected extras |
+| Unsupported (skip with warning) | `.png`, `.jpg`, `.jpeg`, `.gif`, `.mp3`, `.wav`, `.zip`, `.epub`, and any other extension | Log warning: `⚠ Skipped [filename] — unsupported format` |
+
+3. Decision tree:
+   - **Only text-native files** (`.md`, `.txt`) or user typed requirements → skip venv entirely, log `✓ No binary documents — skipping markitdown setup`
+   - **Base-only formats** (html, csv, json, xml) but no extras-requiring formats → `pip install markitdown`
+   - **Extras-requiring formats present** → build extras list dynamically from detected extensions, e.g. `pip install "markitdown[docx,pdf]"`
+
+4. Venv handling (only when markitdown is needed):
+   - Test if venv exists: run `scripts/venv/bin/python --version` (Linux/Mac) or `scripts\venv\Scripts\python.exe --version` (Windows)
+   - If EXISTS and works: Log `✓ Reusing existing venv at scripts/venv`
+   - If NOT EXISTS: Create with `python -m venv scripts/venv` (try `python3` if `python` fails on Linux/Mac)
+   - If EXISTS but BROKEN (command fails): Ask user:
+     ```
+     ✗ Detected broken venv at scripts/venv
+     Options:
+     - cleanup: Delete broken venv and create a fresh one
+     - abort: Stop here and let me fix it manually
+     Choose: (cleanup/abort)
+     ```
+     - cleanup: Delete `scripts/venv` then recreate
+     - abort: STOP execution entirely
+   - If venv creation FAILS: Report error and STOP (fail fast)
+   - If markitdown installation FAILS: Report error and STOP (fail fast)
+
+#### Step 1.5: Convert Source Documents
+- `.md` and `.txt` files: copy to `source/converted/` as-is (or read directly in Phase 2)
+- `.csv`, `.json`, `.xml`, `.html`, `.htm`: convert via markitdown base package
+- `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`: convert via markitdown with installed extras
+  - Command: `python -m markitdown [input_file] -o analysis/[ER_ID]/source/converted/[filename].md`
+  - Run one file at a time; log each result
+- Unsupported extensions: log warning and skip
+- On individual file error: log to `analysis/[ER_ID]/source/converted/conversion-errors.md` and continue — do NOT stop
+- If user typed requirements directly: write them to `analysis/[ER_ID]/source/requirements-input.md`
+
+Report: `✓ Conversion complete: [X] files ready ([Y] skipped — see conversion-errors.md)`
+
+**Proceed immediately to Step 1.6.**
+
+#### Step 1.6: Initial Requirements Extraction
+- Parse converted documents (from `source/converted/`) and any `requirements-input.md`
 - Extract requirement statements
 - Create initial `processing/requirements.md`:
 
@@ -479,9 +521,10 @@ Thank you for using the ER Agent!
 ## Error Handling
 
 ### Document Conversion Failures
-- If markitdown fails, attempt plain text extraction
-- Log failed conversions but continue with available documents
-- Notify user of any conversion issues
+- Individual file conversion errors are logged to `source/converted/conversion-errors.md` — do NOT stop
+- Unsupported file formats are skipped with a warning
+- If venv creation or markitdown installation fails: STOP (fail fast)
+- Report conversion summary with counts of successful, failed, and skipped files
 
 ### Missing Information
 - Clearly mark gaps in requirements
@@ -508,12 +551,7 @@ The ER Agent is invoked with:
 /er
 ```
 
-Or with initial documents:
-```
-/er <path-to-documents>
-```
-
 ## Version
 
-ER Agent v1.0 - Simplified Enhancement Requirements Analyzer
+ER Agent v1.1 - Simplified Enhancement Requirements Analyzer
 Based on SRD Agent architecture, streamlined for efficiency

@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed (`er.agent.md`)
+- **Phase 1 rewrite** — replaced "prompt user to specify document locations" with SRD-style intake: agent creates `source\` folder upfront, tells user to place documents there and say "ready" (or type requirements directly in chat), then waits for input
+- **Dynamic dependency detection** — scans `source\` for file extensions after user says "ready", builds `pip install` command with only the markitdown extras actually needed (e.g. `markitdown[docx,pdf]` if only `.docx` and `.pdf` files are present)
+- **Conditional venv** — skips venv creation entirely when only text-native files (`.md`, `.txt`) are present; installs base `markitdown` (no extras) for formats like `.html`, `.csv`, `.json`, `.xml` that don't require extras
+- **Folder rename** — `input\` → `source\`, `input\converted\` → `source\converted\` to match SRD agent convention
+- **Expanded supported formats** — added `.html`, `.htm`, `.json`, `.xml`, `.xls` to the supported file list
+- **Unsupported format handling** — images (`.png`, `.jpg`, `.jpeg`, `.gif`), audio (`.mp3`, `.wav`), archives (`.zip`), and `.epub` are skipped with a warning (images require OCR plugin + external API key; audio requires speech recognition)
+- **Venv handling** — added broken-venv detection with cleanup/abort prompt, fail-fast on venv creation or markitdown install failure (adapted from SRD agent)
+- **Conversion approach** — replaced inline Python `MarkItDown` class usage with CLI `python -m markitdown` one-file-at-a-time conversion; per-file errors logged to `source\converted\conversion-errors.md` without stopping
+- **Removed** `/er <path-to-documents>` invocation — source folder is now created by the agent; no external path needed
+- Version bumped to v1.1
+
+### Changed (`README.md`)
+- Updated ER agent Quick Start to describe new source-folder workflow
+- Updated Phase 1 description: source folder prompt, dynamic dependency detection, conditional venv
+- Added "Supported file types" line listing all accepted formats
+- Added `source\converted\` to outputs table
+- Updated folder structure diagram: `input\` → `source\`
+
 ---
 
 ## [0.9.0] - 2026-03-12
