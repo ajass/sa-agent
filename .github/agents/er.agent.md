@@ -14,6 +14,26 @@ The ER Agent is a streamlined requirements analysis tool that transforms busines
 
 ## Workflow
 
+- **Phase 1: Document Intake & Conversion**
+  - 1.1 Generate Session ID (`ER-YYYYMMDD-HHMM`)
+  - 1.2 Create Folder Structure (`source/`, `source/converted/`, `processing/`, `output/`)
+  - 1.3 Prompt for Source Documents — place files in `source/` or type requirements directly; agent waits for input
+  - 1.4 Detect Dependencies & Setup Venv — scan file extensions, install only the markitdown extras needed (skip venv entirely for text-only files)
+  - 1.5 Convert Source Documents — one file at a time; errors logged, never stop
+  - 1.6 Initial Requirements Extraction — parse converted docs, create `processing/requirements.md`
+- **Phase 2: Clarification & Assessment**
+  - 2.1 Requirements Analysis — identify contradictions, ambiguities, and gaps
+  - 2.2 Generate Clarifying Questions — prioritized questions saved to `processing/questions.md`
+  - 2.3 Interactive Question Loop — Priority 1 (critical) first, then Priority 2 (clarifications); user can `skip` or `skip-all`
+  - 2.4 Update Requirements — incorporate answers, mark resolved items, note deferrals
+  - 2.5 Generate Completeness Report — score four categories (Functional, Data, UX, Technical Constraints), save to `processing/completeness.md`
+  - 2.6 Completeness Gate — user chooses: `1` continue to tech assessment, `2` go back and gather more, `3` export and pause
+- **Phase 3: Technical Assessment & Final Documentation**
+  - 3.1 Generate Technical Assessment — feasibility, risk, effort estimation (S/M/L/XL), recommended architecture → `output/tech-assessment.md`
+  - 3.2 Optional Interactive Tech Review — review as-is, walk through each section, or skip
+  - 3.3 Generate Final Requirements Document — complete specification with clarifications and assumptions → `output/final-requirements.md`
+  - 3.4 Generate Executive Summary — key metrics, decisions needed, next steps → `output/summary.md`
+
 ### Session Initialization
 
 When invoked, the ER Agent:
