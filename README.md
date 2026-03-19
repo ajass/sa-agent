@@ -108,6 +108,52 @@ Full-lifecycle solution architecture agent. Converts source documents, builds ar
 
 ---
 
+### `uat` — UAT Test Case Selector
+
+Change-driven UAT test planning agent. Takes in change documents (patch notes, enhancement descriptions, release notes, bug fix summaries) alongside a full UAT test case suite, maps each change to relevant test cases, and produces a prioritized test plan with a gap analysis and full traceability matrix. Supports resume — re-invoke the agent and it detects where the last session left off.
+
+**Quick Start:**
+1. Copy `.github\agents\uat.agent.md` to your project's `.github\agents\` folder
+2. Open VS Code → Copilot Chat → select `uat` from the agent dropdown
+3. The agent runs state detection, creates the session folder (or resumes), and prompts you to place documents in `source\changes\` and `source\testcases\`
+
+**Phases:**
+- **Phase 1 — Document Intake & Extraction** — Auto-generate session ID (`UAT-YYYYMMDD-HHMM`), create folder structure under `analysis\UAT-YYYYMMDD-HHMM\` with `source\changes\` and `source\testcases\` subfolders. Prompt user to place change documents and test case files (or type changes directly in chat). Scan file extensions, install only the markitdown extras needed (reuses existing venv if present; skips venv entirely if only text files). Convert all documents to Markdown. Extract discrete change items tagged `CHG-NNN` into `processing\changes.md`. Parse test cases into `processing\testcases.md` — **existing test case IDs are preserved**; new sequential IDs assigned only to test cases with no existing ID.
+- **Phase 2 — Mapping, Clarification & Coverage Assessment** — For each `CHG-NNN`, identify candidate test cases using 5 matching signals (area/module match, keyword overlap, entity overlap, integration point match, functional behavior match) and score each mapping: **Strong / Moderate / Weak**. Detect gaps (changes with no coverage). Generate prioritized clarifying questions referencing `CHG-NNN` and `TC-NNN` (`processing\questions.md`), walk user through interactive Q&A loop (Priority 1 critical gaps first, then Priority 2 ambiguous mappings). Update traceability and confidence scores. Generate coverage assessment report (`processing\coverage.md`) with overall coverage % and per-area breakdown. **Coverage gate:** continue to test plan generation, go back and refine mappings, or export current state and pause.
+- **Phase 3 — Test Plan & Final Documentation** — Generate prioritized test plan (`output\test-plan.md`) with 4 execution tiers (Critical / High / Medium / Low). Each entry shows mapped `CHG-NNN`(s), confidence score, and rationale. Lists test cases not recommended for this cycle. Generate gap analysis (`output\gap-analysis.md`) with suggested new test cases for uncovered changes. Generate final bidirectional traceability matrix (`output\traceability-matrix.md`). Optional interactive review. Generate executive summary (`output\summary.md`) with risk assessment and key metrics.
+
+**Test case tiers:**
+
+| Tier | Run when... |
+|------|------------|
+| **Critical** | Test case has a Strong/confirmed mapping to a change; or is the only coverage for a particular change |
+| **High** | Test case has a Moderate confidence mapping; or covers multiple changes at Weak confidence |
+| **Medium** | Test case has a Weak mapping but is in an affected area; indirect regression coverage |
+| **Low** | Test case touches an area mentioned in change documents with no specific mapping |
+
+**Supported file types:** `.docx`, `.pptx`, `.xlsx`, `.xls`, `.pdf`, `.html`, `.htm`, `.csv`, `.json`, `.xml`, `.eml`, `.txt`, `.md` — markitdown extras are installed dynamically based on which file types are present; `.eml` converted via Python stdlib
+
+**Resume support:** File-based state detection runs on every invocation. Scans for existing `UAT-*` session folders and checks which output files exist to determine where to resume.
+
+**Outputs per session (`analysis\UAT-YYYYMMDD-HHMM\`):**
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `source\changes\` | 1 | Raw change documents (patch notes, release notes, etc.) |
+| `source\testcases\` | 1 | Raw test case suite files |
+| `source\converted\` | 1 | Markitdown-converted markdown files |
+| `processing\changes.md` | 1 | Change inventory tagged `CHG-NNN` with area and source |
+| `processing\testcases.md` | 1 | Test case inventory with preserved IDs, area, and description |
+| `processing\traceability.md` | 2 | Change-to-test-case mappings with confidence scores |
+| `processing\questions.md` | 2 | Clarifying questions (Priority 1 gaps, Priority 2 ambiguous mappings) |
+| `processing\coverage.md` | 2 | Coverage assessment: overall % and per-area breakdown |
+| `output\test-plan.md` | 3 | Prioritized test plan (Critical / High / Medium / Low tiers) |
+| `output\gap-analysis.md` | 3 | Uncovered changes with suggested new test cases |
+| `output\traceability-matrix.md` | 3 | Final bidirectional CHG ↔ TC mapping |
+| `output\summary.md` | 3 | Executive summary with risk assessment and key metrics |
+
+---
+
 ### `er` — Enhancement Request
 
 Streamlined requirements analysis tool that transforms business enhancement requests into actionable technical specifications. Focuses on clarity, completeness, and technical feasibility through a three-phase process. Supports resume — re-invoke the agent and it detects where the last session left off.
@@ -147,8 +193,9 @@ Streamlined requirements analysis tool that transforms business enhancement requ
 | You have raw docs and need structured project scaffolding + architecture templates | `sa` |
 | You have scattered BRDs and meeting notes, need to validate requirements, get a tech feasibility assessment, and produce a full enhancement package with backlog | `srd` |
 | You have a specific enhancement request and need to clarify requirements, assess completeness, and evaluate technical feasibility | `er` |
+| You have change documents (patch notes, release notes, enhancement descriptions) and a test case suite, and need to know which test cases to run for UAT | `uat` |
 
-The `srd` agent is fully self-contained — it handles its own document conversion and does not require `sa` or `er` to have been run first.
+The `srd` and `uat` agents are fully self-contained — they handle their own document conversion and do not require `sa` or `er` to have been run first.
 
 ---
 
@@ -165,6 +212,12 @@ Configuration is per-session and does not persist.
 - **Completeness gate** (always prompts): after Phase 2 completeness assessment — three options: `1` continue to technical assessment, `2` go back and gather more requirements, `3` export current state and pause
 - **Optional review gate**: Phase 3 offers an interactive tech review walkthrough (review as-is, walk through each section, or skip)
 - **Auto-chain** (brief status line only): Phase 1 steps chain automatically; Phase 3 steps chain automatically after the completeness gate
+
+**`uat`** uses a single coverage gate + file-based state detection — no toggle required:
+- **State detection** (runs first on every invocation): scans for existing `UAT-*` session folders and checks output files to determine where to resume. Auto-picks the most recent session.
+- **Coverage gate** (always prompts): after Phase 2 coverage assessment — three options: `1` continue to test plan generation, `2` go back and refine mappings, `3` export current state and pause
+- **Optional review gate**: Phase 3 offers an interactive review walkthrough (review as-is, walk through each section, or skip)
+- **Auto-chain**: Phase 1 steps chain automatically; Phase 3 steps chain automatically after the coverage gate
 
 **`srd`** uses a targeted smart gate model — no toggle required:
 - **Smart gates** (always prompt with options): after completeness assessment (Phase 3), after tech feedback ingest (Phase 7), after stakeholder validation (Phase 10)
@@ -196,6 +249,9 @@ curl -o .github\agents\sa.agent.md https://raw.githubusercontent.com/ajass/sa-ag
 
 # ER Agent
 curl -o .github\agents\er.agent.md https://raw.githubusercontent.com/ajass/sa-agent/master/.github/agents/er.agent.md
+
+# UAT Agent
+curl -o .github\agents\uat.agent.md https://raw.githubusercontent.com/ajass/sa-agent/master/.github/agents/uat.agent.md
 ```
 
 Or download directly from [GitHub](https://github.com/ajass/sa-agent).
@@ -210,8 +266,9 @@ project-root\
 │   └── agents\
 │       ├── srd.agent.md         # Solution Requirements Designer agent
 │       ├── sa.agent.md          # Solution Architect agent
-│       └── er.agent.md          # Enhancement Request agent
-├── analysis\                    # SRD and ER agents — analysis sessions
+│       ├── er.agent.md          # Enhancement Request agent
+│       └── uat.agent.md         # UAT Test Case Selector agent
+├── analysis\                    # SRD, ER, and UAT agents — analysis sessions
 │   ├── README.md                # Status dashboard (SRD)
 │   ├── SRD-YYYYMMDD-HHMM\
 │   │   ├── source\              # Raw input documents
@@ -241,6 +298,28 @@ project-root\
 │           ├── tech-assessment.md       # Feasibility, risk, effort (Step 3.1)
 │           ├── final-requirements.md    # Final requirements with REQ-NNN (Step 3.3)
 │           └── summary.md              # Executive summary (Step 3.4)
+│   └── UAT-YYYYMMDD-HHMM\
+│       │
+│       │   ── Phase 1: Document Intake & Extraction ──
+│       ├── source\
+│       │   ├── changes\                 # User places change documents here (Step 1.3)
+│       │   ├── testcases\               # User places test case suite here (Step 1.3)
+│       │   └── converted\              # Markitdown output for both (Step 1.5)
+│       │
+│       │   ── Phase 2: Mapping, Clarification & Coverage ──
+│       ├── processing\
+│       │   ├── changes.md              # Change inventory CHG-NNN (Step 1.6)
+│       │   ├── testcases.md            # Test case inventory with preserved IDs (Step 1.7)
+│       │   ├── traceability.md         # CHG → TC mappings with confidence scores (Step 2.1)
+│       │   ├── questions.md            # Clarifying questions (Step 2.3)
+│       │   └── coverage.md             # Coverage assessment report (Step 2.6)
+│       │
+│       │   ── Phase 3: Test Plan & Final Documentation ──
+│       └── output\
+│           ├── test-plan.md            # Prioritized test plan — 4 tiers (Step 3.1)
+│           ├── gap-analysis.md         # Uncovered changes + suggested test cases (Step 3.2)
+│           ├── traceability-matrix.md  # Final bidirectional CHG ↔ TC mapping (Step 3.3)
+│           └── summary.md             # Executive summary with risk assessment (Step 3.5)
 ├── artifacts\                   # SA agent — strategic architecture artifacts
 │   ├── requirements\
 │   ├── architecture\

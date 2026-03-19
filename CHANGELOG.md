@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (`uat.agent.md`)
+- **New agent: UAT Test Case Selector** — `/uat` — change-driven UAT test planning agent (1,026 lines)
+- **YAML frontmatter** — `name: uat`, `target: vscode`, `tools:` declaration matching existing agents
+- **DIRECTORY CONTAINMENT section** — all file operations stay within current working directory; no absolute path escapes; no `..`; verify path before every file operation
+- **WINDOWS CRITICAL section** — backslash paths, no `&&`, full venv Python path, `py` fallback
+- **STATE DETECTION section** — file-based resume support running before any other action on every invocation. Scans for existing `UAT-*` session folders. Detection tree:
+  - No `UAT-*` folder → fresh start (Phase 1.1)
+  - `UAT_ID\` exists but no `processing\changes.md` → Phase 1 incomplete (check source folders)
+  - `processing\changes.md` exists but no `processing\testcases.md` → resume at Step 1.7
+  - `processing\testcases.md` exists but no `processing\coverage.md` → resume Phase 2 at Step 2.1
+  - `processing\coverage.md` exists but no `output\test-plan.md` → re-present coverage gate
+  - `output\test-plan.md` exists but no `output\summary.md` → resume Phase 3 at Step 3.2
+  - `output\summary.md` exists → session complete, offer `new`
+- **Dual source folder intake** — agent creates `source\changes\` and `source\testcases\` subfolders; user places change documents and test case files separately. Converted files prefixed with source folder name to avoid filename collisions
+- **Dynamic dependency detection** — same pattern as ER agent; scans both source subfolders for extensions, installs only the markitdown extras actually needed; skips venv entirely for text-only files
+- **CHG-NNN change extraction** — discrete change items extracted from all change documents, tagged sequentially (`CHG-001`, `CHG-002`, etc.) with source file, affected area, and description. Written to `processing\changes.md`
+- **Test case parsing with ID preservation** — existing test case IDs (e.g. `TC-001`, `TEST-100`) are preserved exactly as-is; new sequential IDs assigned only to test cases with no existing ID. Written to `processing\testcases.md`
+- **Automated mapping engine** — for each `CHG-NNN`, candidate test cases identified via 5 signals: area/module match, keyword overlap, entity overlap, integration point match, functional behavior match. Scored **Strong / Moderate / Weak**. Written to `processing\traceability.md`
+- **Gap detection** — identifies changes with no test case coverage (critical gaps) and changes with only Weak mappings (weak gaps)
+- **Interactive clarification loop** — Priority 1 (critical gaps: changes with no coverage) then Priority 2 (ambiguous mappings). User can answer, `skip` individual questions, or `skip-all`. Loop exits when clean or user defers. Questions are stakeholder-ready and self-contained, referencing `CHG-NNN` and `TC-NNN`. Written to `processing\questions.md`
+- **Coverage assessment** — overall coverage % = (Fully Covered changes / Total changes) × 100. Per-area breakdown. Written to `processing\coverage.md`
+- **Coverage gate** — 3-option gate after Phase 2: continue to test plan, go back and refine, or export and pause
+- **Prioritized test plan (4 tiers)** — `output\test-plan.md`:
+  - **Critical** — Strong/confirmed mapping; or only coverage for a change
+  - **High** — Moderate confidence; or multiple changes at Weak
+  - **Medium** — Weak mapping in an affected area; indirect regression
+  - **Low** — Area mentioned in change docs but no specific mapping
+  - Each entry shows TC-ID, title, tier, mapped `CHG-NNN`(s), confidence, rationale, and execution notes
+  - Includes recommended execution order table for Critical + High (minimum viable test run)
+  - Includes "not recommended" table for test cases with no change relevance
+- **Gap analysis with suggested new test cases** — `output\gap-analysis.md`. For each uncovered or weakly covered change: describes the gap, risk level, and suggests a new test case with title, purpose, key verification points, and preconditions
+- **Bidirectional traceability matrix** — `output\traceability-matrix.md`. Forward (CHG → TC) and reverse (TC → CHG) tables with confidence scores and coverage statistics
+- **Executive summary** — `output\summary.md`. Risk assessment (Low/Medium/High based on coverage % and high-risk gap count), key metrics table, recommended minimum test run, gap highlights
+- **GUARDRAILS section** — rules covering path safety, state detection ordering, coverage gate behavior, clarification loop, CHG-NNN/TC-NNN enforcement, ID preservation, conversion error handling, venv fail-fast, tier assignment (always use highest warranted tier), confidence scoring transparency
+
+### Changed (`README.md`)
+- Added `uat` agent section with phases, tier table, supported file types, outputs table
+- Updated "When to Use Which Agent" table to include `uat`
+- Updated `srd` and `uat` self-contained note
+- Added `uat` Decision Gates entry
+- Updated Copy Agents section with `uat` curl command
+- Updated folder structure diagram to include `uat.agent.md` and full `UAT-YYYYMMDD-HHMM\` tree
+- Updated `analysis\` comment to reference UAT agent alongside SRD and ER
+
+---
+
 ### Added (`er.agent.md`)
 - **YAML frontmatter** — added `name: er`, `target: vscode`, `tools:` declaration to match `sa` and `srd` agents
 - **DIRECTORY CONTAINMENT section** — all file operations must stay within the current working directory; no absolute paths that escape workspace root; no `..` escapes; verify path before every file operation (adapted from SRD agent)
